@@ -1,5 +1,4 @@
-include README
+include README.md
 include setup.py
-include hubble/*
-exclude hubble/test.py
-include hubble/contract_abis/*
+include hubble_exchange/*
+include hubble_exchange/contract_abis/*

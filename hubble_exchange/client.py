@@ -6,7 +6,7 @@ import websocket
 from typing import List, Callable, Dict, Any
 from hexbytes import HexBytes
 from web3 import Web3
-from models import (
+from hubble_exchange.models import (
     Order,
     OrderStatusResponse,
     OrderBookDepthResponse,
@@ -15,8 +15,8 @@ from models import (
     Message,
     WebsocketResponse,
 )
-from order_book import OrderBookClient
-from utils import (
+from hubble_exchange.order_book import OrderBookClient
+from hubble_exchange.utils import (
     get_rpc_endpoint,
     get_websocket_endpoint,
     float_to_scaled_int,
@@ -78,16 +78,16 @@ class HubbleClient:
         salt = str(int(time.time())) + str(random.randint(0, 1000))
         salt_int = int(salt)
         order = Order(
-            Id=None,
-            AmmIndex=market,
-            Trader=self.trader_address,
-            BaseAssetQuantity=float_to_scaled_int(base_asset_quantity, 18),
-            Price=float_to_scaled_int(price, 6),
-            Salt=salt_int,
-            ReduceOnly=reduce_only,
+            id=None,
+            amm_index=market,
+            trader=self.trader_address,
+            base_asset_quantity=float_to_scaled_int(base_asset_quantity, 18),
+            price=float_to_scaled_int(price, 6),
+            salt=salt_int,
+            reduce_only=reduce_only,
         )
         tx_hash = self.orderBookClient.place_order(order)
-        order.Id = tx_hash
+        order.id = tx_hash
         return order
 
     def cancel_orders(self, orders: List[Order]) -> None:
@@ -96,12 +96,12 @@ class HubbleClient:
     def cancel_order_by_id(self, order_id: HexBytes) -> None:
         order_status = self.get_order_status(order_id)
         order = Order(
-            AmmIndex=order_status.Symbol,
-            Trader=self.trader_address,
-            BaseAssetQuantity=float_to_scaled_int(order_status.OrigQty, 18),
-            Price=float_to_scaled_int(order_status.Price, 6),
-            Salt=order_status.Salt,
-            ReduceOnly=order_status.ReduceOnly,
+            amm_index=order_status.Symbol,
+            trader=self.trader_address,
+            base_asset_quantity=float_to_scaled_int(order_status.OrigQty, 18),
+            price=float_to_scaled_int(order_status.Price, 6),
+            salt=order_status.Salt,
+            reduce_only=order_status.ReduceOnly,
         )
         self.cancel_orders([order])
 

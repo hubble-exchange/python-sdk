@@ -6,8 +6,8 @@ from hexbytes import HexBytes
 from web3 import Web3
 from web3.middleware import geth_poa_middleware
 
-from models import Order, OrderStatusResponse, OrderBookDepthResponse
-from utils import get_rpc_endpoint, get_address_from_private_key
+from hubble_exchange.models import Order, OrderStatusResponse, OrderBookDepthResponse
+from hubble_exchange.utils import get_rpc_endpoint, get_address_from_private_key
 
 OrderBookContractAddress = Address("0x0300000000000000000000000000000000000000")
 

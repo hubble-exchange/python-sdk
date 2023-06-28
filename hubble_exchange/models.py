@@ -6,22 +6,22 @@ from hexbytes import HexBytes
 
 @dataclass
 class Order:
-    Id: HexBytes
-    AmmIndex: int
-    Trader: Address
-    BaseAssetQuantity: int
-    Price: int
-    Salt: int
-    ReduceOnly: bool
+    id: HexBytes
+    amm_index: int
+    trader: Address
+    base_asset_quantity: int
+    price: int
+    salt: int
+    reduce_only: bool
 
     def to_dict(self):
         return {
-            "ammIndex": self.AmmIndex,
-            "trader": self.Trader,
-            "baseAssetQuantity": self.BaseAssetQuantity,
-            "price": self.Price,
-            "salt": self.Salt,
-            "reduceOnly": self.ReduceOnly,
+            "ammIndex": self.amm_index,
+            "trader": self.trader,
+            "baseAssetQuantity": self.base_asset_quantity,
+            "price": self.price,
+            "salt": self.salt,
+            "reduceOnly": self.reduce_only,
         }
 
 
