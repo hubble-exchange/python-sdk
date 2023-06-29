@@ -26,7 +26,7 @@ from hubble_exchange import HubbleClient, OrderBookDepthResponse
 def main():
     client = HubbleClient(os.getenv("PRIVATE_KEY"))
     # place an order for market = 0, amount = 0.2, price = 1800, reduce_only = False
-    order = client.place_order(0, 0.2, 1800, False)
+    order = client.place_single_order(0, 0.2, 1800, False)
 
     # place multiple orders at once
     orders = []
