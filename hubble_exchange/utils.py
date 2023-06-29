@@ -1,5 +1,7 @@
 import os
 import math
+import random
+import time
 from eth_typing import Address
 from eth_account import Account
 
@@ -16,6 +18,9 @@ def float_to_scaled_int(val: float, scale: int) -> int:
 def get_address_from_private_key(private_key: str) -> Address:
     account = Account.from_key(private_key)
     return account.address
+
+def get_new_salt() -> int:
+    return int(str(time.time_ns()) + str(random.randint(0, 10000)))
 
 
 def get_rpc_endpoint() -> str:

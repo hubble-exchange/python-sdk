@@ -1,0 +1,29 @@
+[build-system]
+requires = ['setuptools>=68']
+build-backend = 'setuptools.build_meta'
+
+[metadata]
+author_email = "lumos@hubble.exchange"
+long_description = {file = "README.md"}
+long_description_content_type = "text/markdown"
+url = "https://github.com/hubble-exchange/python-sdk"
+
+[project]
+name = "hubble_exchange"
+version = "0.1.0dev"
+description = "Official python SDK for Hubble Exchange"
+authors = [{name = "Lumos", email = "lumos@hubble.exchange"}]
+requires-python = ">=3.7"
+license = {file = "LICENSE"}
+dependencies = [
+    "web3 >= 6.5.0",
+    "eth_typing >= 3.4.0",
+    "eth_account >= 0.8.0",
+    "requests >= 2.31.0",
+    "websocket-client >= 1.6.0"
+]
+keywords = ["hubble", "exchange", "perpetual", "futures", "sdk", "python", "ethereum", "web3"]
+
+[tool.setuptools]
+packages = ["hubble_exchange", "hubble_exchange.contract_abis"]
+include-package-data = true

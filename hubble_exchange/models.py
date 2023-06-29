@@ -3,6 +3,8 @@ from typing import List
 from eth_typing import Address
 from hexbytes import HexBytes
 
+from hubble_exchange.utils import float_to_scaled_int, get_new_salt
+
 
 @dataclass
 class Order:
@@ -23,6 +25,21 @@ class Order:
             "salt": self.salt,
             "reduceOnly": self.reduce_only,
         }
+
+    @classmethod
+    def new(cls, amm_index: int, base_asset_quantity: int, price: int, reduce_only: bool):
+        """
+        Create a new order with a random salt and no ID or trader. This can be used for placing
+        multiple orders at once.
+        """
+        return cls(
+            id=None,
+            amm_index=amm_index,
+            trader=None,
+            base_asset_quantity=float_to_scaled_int(base_asset_quantity, 18),
+            price=float_to_scaled_int(price, 6),
+            salt=get_new_salt(),
+            reduce_only=reduce_only)
 
 
 @dataclass

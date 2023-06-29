@@ -3,9 +3,8 @@ import random
 import time
 import requests
 import websocket
-from typing import List, Callable, Dict, Any
+from typing import List, Callable, Any
 from hexbytes import HexBytes
-from web3 import Web3
 from hubble_exchange.models import (
     Order,
     OrderStatusResponse,
@@ -21,6 +20,7 @@ from hubble_exchange.utils import (
     get_websocket_endpoint,
     float_to_scaled_int,
     get_address_from_private_key,
+    get_new_salt,
 )
 
 
@@ -72,7 +72,29 @@ class HubbleClient:
         order_status = OrderStatusResponse(**response_json["result"])
         return order_status
 
-    def place_order(
+    def place_orders(self, orders: List[Order]) -> List[Order]:
+        if len(orders) > 75:
+            raise ValueError("Cannot place more than 75 orders at once")
+
+        for order in orders:
+            if order.amm_index is None:
+                raise ValueError("Order AMM index is not set")
+            if order.base_asset_quantity is None:
+                raise ValueError("Order base asset quantity is not set")
+            if order.price is None:
+                raise ValueError("Order price is not set")
+            if order.reduce_only is None:
+                raise ValueError("Order reduce only is not set")
+
+            # trader and salt can be set automatically
+            if order.trader in [None, "0x", ""]:
+                order.trader = self.trader_address
+            if order.salt in [None, 0]:
+                order.salt = get_new_salt()
+
+        return self.orderBookClient.place_orders(orders)
+
+    def place_single_order(
         self, market: int, base_asset_quantity: float, price: float, reduce_only: bool
     ) -> Order:
         salt = str(int(time.time())) + str(random.randint(0, 1000))
@@ -83,7 +105,7 @@ class HubbleClient:
             trader=self.trader_address,
             base_asset_quantity=float_to_scaled_int(base_asset_quantity, 18),
             price=float_to_scaled_int(price, 6),
-            salt=salt_int,
+            salt=get_new_salt(),
             reduce_only=reduce_only,
         )
         tx_hash = self.orderBookClient.place_order(order)
