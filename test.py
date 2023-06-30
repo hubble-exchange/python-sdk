@@ -12,13 +12,14 @@ def main():
     # positions = client.get_margin_and_positions()
     # print(positions)
 
-    order = client.place_single_order(0, 0.2, 1800, False)
-    print(order)
+    # order = client.place_single_order(0, 0.1, 1800, False)
+    # print(order)
 
     orders = []
     for i in range(10):
         orders.append(Order.new(3, 1, 1.2, False))
     orders = client.place_orders(orders)
+    print(orders)
     # order = client.place_order(0, 0.2, 1801, False)
     # print(order)
     # order = client.place_order(0, 0.2, 1802, False)

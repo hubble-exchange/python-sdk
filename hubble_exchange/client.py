@@ -11,7 +11,6 @@ from hubble_exchange.models import (
     OrderBookDepthResponse,
     GetPositionsResponse,
     OrderBookDepthUpdateResponse,
-    Message,
     WebsocketResponse,
 )
 from hubble_exchange.order_book import OrderBookClient
@@ -97,8 +96,6 @@ class HubbleClient:
     def place_single_order(
         self, market: int, base_asset_quantity: float, price: float, reduce_only: bool
     ) -> Order:
-        salt = str(int(time.time())) + str(random.randint(0, 1000))
-        salt_int = int(salt)
         order = Order(
             id=None,
             amm_index=market,
@@ -108,8 +105,8 @@ class HubbleClient:
             salt=get_new_salt(),
             reduce_only=reduce_only,
         )
-        tx_hash = self.orderBookClient.place_order(order)
-        order.id = tx_hash
+        order_hash = self.orderBookClient.place_order(order)
+        order.id = order_hash
         return order
 
     def cancel_orders(self, orders: List[Order]) -> None:

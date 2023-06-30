@@ -2,22 +2,20 @@ import concurrent.futures
 import json
 import os
 
-from eth_typing import Address
 from hexbytes import HexBytes
 from typing import List, Dict, Any
 from web3 import Web3
 from web3.middleware import geth_poa_middleware
 from web3.middleware.cache import construct_simple_cache_middleware
 
+from hubble_exchange.constants import OrderBookContractAddress, MAX_GAS_LIMIT, CHAIN_ID, GAS_PER_ORDER
+from hubble_exchange.eip712 import get_order_hash
 from hubble_exchange.models import Order
 from hubble_exchange.utils import get_rpc_endpoint, get_address_from_private_key
 
-MAX_GAS_LIMIT = 15_000_000  # 15 million
-OrderBookContractAddress = Address("0x0300000000000000000000000000000000000000")
-
 # read abi from file
-dir_ = os.path.dirname(__file__)
-with open(f"{dir_}/contract_abis/OrderBook.json", 'r') as abi_file:
+HERE = os.path.dirname(__file__)
+with open(f"{HERE}/contract_abis/OrderBook.json", 'r') as abi_file:
     abi_str = abi_file.read()
     ABI = json.loads(abi_str)
 
@@ -28,7 +26,7 @@ class OrderBookClient(object):
         self._private_key = private_key
         self.public_address = get_address_from_private_key(private_key)
         self.nonce = None
-        self.chain_id = 321123
+        self.chain_id = CHAIN_ID
 
         self.web3_client = Web3(Web3.HTTPProvider(self.rpc_endpoint))
         self.web3_client.middleware_onion.inject(geth_poa_middleware, layer=0)
@@ -40,9 +38,9 @@ class OrderBookClient(object):
         self.order_book = self.web3_client.eth.contract(address=OrderBookContractAddress, abi=ABI)
 
     def place_order(self, order: Order) -> HexBytes:
-        order_hash = self._get_order_hash(order)
+        order_hash = get_order_hash(order)
 
-        self._send_orderbook_transaction("placeOrder", [order.to_dict()], {'gas': 200_000})
+        self._send_orderbook_transaction("placeOrder", [order.to_dict()], {'gas': GAS_PER_ORDER})
         return order_hash
 
     def place_orders(self, orders: List[Order]) -> List[Order]:
@@ -51,16 +49,12 @@ class OrderBookClient(object):
         """
         place_order_payload = []
 
-        # get order hashes concurrently
-        with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
-            order_hashes = list(executor.map(self._get_order_hash, orders))
-
-        for order, order_hash_bytes in zip(orders, order_hashes):
-            order_hash = HexBytes(order_hash_bytes)
-            place_order_payload.append(order.to_dict())
+        for order in orders:
+            order_hash = get_order_hash(order)
             order.id = order_hash
+            place_order_payload.append(order.to_dict())
 
-        self._send_orderbook_transaction("placeOrders", [place_order_payload], {'gas': min(200_000 * len(orders), MAX_GAS_LIMIT)})
+        self._send_orderbook_transaction("placeOrders", [place_order_payload], {'gas': min(GAS_PER_ORDER * len(orders), MAX_GAS_LIMIT)})
         return orders
 
 
@@ -77,10 +71,6 @@ class OrderBookClient(object):
         else:
             self.nonce += 1
         return self.nonce
-    
-    def _get_order_hash(self, order: Order) -> HexBytes:
-        order_hash_bytes = self.order_book.functions.getOrderHash(order.to_dict()).call()
-        return HexBytes(order_hash_bytes)
 
     def _send_orderbook_transaction(self, method_name: str, args: List[Any], tx_options: Dict = None) -> HexBytes:
         method = getattr(self.order_book.functions, method_name)
