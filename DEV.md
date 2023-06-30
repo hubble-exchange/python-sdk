@@ -1,12 +1,23 @@
 ## Setup pypirc
 
-Go to pypi.org and login to create API keys and then create a file called `.pypirc` in your home directory and add the following content to it:
+Go to pypi.org(and test.pypi.org) and login to create API keys and then create a file called `.pypirc` in your home directory and add the keys
 
+```
+# ~/.pypirc
+
+[testpypi]
+  username = __token__
+  password = <api_key>
+
+[pypi]
+  username = __token__
+  password = <api_key>
+```
 
 ## Steps to build and publish
 
 ```shell
-# create a new package
+# build a new package, version number needs to be updated in pyproject.toml before this
 python3 -m build
 
 # test the release
