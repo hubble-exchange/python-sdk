@@ -61,3 +61,50 @@ def main():
 if __name__ == "__main__":
     main()
 ```
+
+## Custom transaction options
+
+The following options can be passed to the client to override the default
+
+```python
+{
+    "nonce": Nonce,
+    "gas": int,
+    "maxFeePerGas": Union[str, Wei],
+    "maxPriorityFeePerGas": Union[str, Wei],
+},
+```
+
+It can be used for `place_orders`, `place_single_order`, `cancel_orders`, `cancel_order_by_id` methods.
+Example:
+```python
+
+from web3 import Web3
+
+client = HubbleClient(os.getenv("PRIVATE_KEY"))
+placed_orders = client.place_orders(orders, {
+    "gas": 500_000,
+    "maxFeePerGas": Web3.to_wei(80, 'gwei'),
+    "maxPriorityFeePerGas": Web3.to_wei(20, 'gwei'),
+})
+```
+
+## Transaction modes
+
+There are different modes in which the client can wait for acknowledgement of the transaction. The default behaviour is to send the transaction and not wait for the acknowledgement.
+This can be changed by explicitly asking the function to wait while sending the trasaction.
+
+- TransactionMode.no_wait: The default behaviour is to send transactions to the blockchain and NOT wait for the acknowledgement.
+- TransactionMode.wait_for_head: Wait for the transaction to be included in the canonical chain. At this time the block is preferred but not yet finalized. However, once the block in included in the canonical chain, the matching engine will start processing the order.
+- TransactionMode.wait_for_accept: Wait for the transaction to be finalised.
+
+Example:
+```python
+from hubble_exchange import TransactionMode
+client = HubbleClient(os.getenv("PRIVATE_KEY"))
+placed_orders = client.place_orders(orders, mode=TransactionMode.wait_for_accept)
+
+# or
+
+client.set_transaction_mode(TransactionMode.wait_for_head)
+```

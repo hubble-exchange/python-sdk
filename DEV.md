@@ -30,3 +30,15 @@ pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/
 # release on pypi - this is like production release
 python3 -m twine upload --repository pypi dist/*
 ```
+
+## Tests
+
+Needs pytest library to be installed in the virtual environment, not globally.
+```shell
+pip install pytest
+```
+
+Run the tests like this:
+```shell
+python -m pytest tests/orderbook.py
+```

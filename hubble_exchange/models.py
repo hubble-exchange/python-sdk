@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import List
+
 from eth_typing import Address
 from hexbytes import HexBytes
 
@@ -61,9 +62,9 @@ class OrderStatusResponse:
 @dataclass
 class OrderBookDepthResponse:
     lastUpdateId: int
-    symbol: int
     E: int
     T: int
+    symbol: int
     bids: List[List[str]]
     asks: List[List[str]]
 

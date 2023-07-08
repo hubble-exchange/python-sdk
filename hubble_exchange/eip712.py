@@ -1,8 +1,9 @@
-from eip712_structs import make_domain, EIP712Struct, Uint, Address, Int, Boolean
+from eip712_structs import (Address, Boolean, EIP712Struct, Int, Uint,
+                            make_domain)
 from eth_utils import keccak
 from hexbytes import HexBytes
 
-from hubble_exchange.constants import OrderBookContractAddress, CHAIN_ID
+from hubble_exchange.constants import CHAIN_ID, OrderBookContractAddress
 from hubble_exchange.models import Order as OrderModel
 
 domain = make_domain(name='Hubble', version="2.0", chainId=CHAIN_ID, verifyingContract=OrderBookContractAddress)
