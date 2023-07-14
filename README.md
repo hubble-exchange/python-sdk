@@ -1,6 +1,7 @@
 # Python SDK for Hubble Exchange
 
-[Hubble Exchange](https://hubble.exchange) is a decentralized exchange built on Avalanche subnet.
+[Hubble Exchange](https://hubble.exchange) is a Layer 1 Blockchain for a Decentralised Perps OrderBook
+<br>[Twitter](https://twitter.com/HubbleExchange)
 
 
 ## Installation

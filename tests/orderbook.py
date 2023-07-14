@@ -23,6 +23,7 @@ def test_place_single_order():
 
     status = client.get_order_status(order.id)
     assert status.origQty == '0.01000000'
+    assert status.positionSide == 'LONG'
     assert status.price == '1800.00000000'
     assert status.reduceOnly == False
     assert status.symbol == 0
@@ -35,14 +36,14 @@ def test_place_orders():
     status = client.get_order_status(orders[0].id)
     assert status.origQty == '0.01000000'
     assert status.positionSide == 'LONG'
-    assert status.price == '1800.00000000'
+    assert status.price == '1800.01000000'
     assert status.reduceOnly == False
     assert status.symbol == 0
 
     status = client.get_order_status(orders[1].id)
     assert status.origQty == '0.01000000'
     assert status.positionSide == 'SHORT'
-    assert status.price == '1801.00000000'
+    assert status.price == '1801.02000000'
     assert status.reduceOnly == False
     assert status.symbol == 0
 
@@ -72,6 +73,6 @@ def test_cancel_order_by_id():
 
 def place_orders():
     orders = []
-    orders.append(Order.new(0, 0.01, 1800, False))
-    orders.append(Order.new(0, -0.01, 1801, False))
+    orders.append(Order.new(0, 0.01, 1800.01, False))
+    orders.append(Order.new(0, -0.01, 1801.02, False))
     return client.place_orders(orders, mode=TransactionMode.wait_for_accept)

@@ -28,7 +28,7 @@ class Order:
         }
 
     @classmethod
-    def new(cls, amm_index: int, base_asset_quantity: int, price: int, reduce_only: bool):
+    def new(cls, amm_index: int, base_asset_quantity: float, price: float, reduce_only: bool):
         """
         Create a new order with a random salt and no ID or trader. This can be used for placing
         multiple orders at once.
