@@ -1,8 +1,9 @@
 from dataclasses import dataclass
-from typing import List
+from typing import Any, Coroutine, List
 
 from eth_typing import Address
 from hexbytes import HexBytes
+from typing_extensions import Protocol
 
 from hubble_exchange.utils import float_to_scaled_int, get_new_salt
 
@@ -34,9 +35,9 @@ class Order:
         multiple orders at once.
         """
         return cls(
-            id=None,
+            id=None, # type: ignore
             amm_index=amm_index,
-            trader=None,
+            trader=None, # type: ignore
             base_asset_quantity=float_to_scaled_int(base_asset_quantity, 18),
             price=float_to_scaled_int(price, 6),
             salt=get_new_salt(),
@@ -99,13 +100,13 @@ class Message:
     jsonrpc: str
     id: int
     method: str
-    params: List[any]
+    params: List[Any]
 
 
 @dataclass
 class Params:
     subscription: str
-    result: any
+    result: Any
 
 
 @dataclass
@@ -121,3 +122,23 @@ class OrderBookDepthUpdateResponse:
     symbol: int
     bids: List[List[str]]
     asks: List[List[str]]
+
+
+class AsyncOrderBookDepthCallback(Protocol):
+    def __call__(self, response: OrderBookDepthResponse) -> Coroutine[Any, Any, Any]: ...
+
+
+class AsyncPositionCallback(Protocol):
+    def __call__(self, response: GetPositionsResponse) -> Coroutine[Any, Any, Any]: ...
+
+
+class AsyncOrderStatusCallback(Protocol):
+    def __call__(self, response: OrderStatusResponse) -> Coroutine[Any, Any, Any]: ...
+
+
+class AsyncPlaceOrdersCallback(Protocol):
+    def __call__(self, response: List[Order]) -> Coroutine[Any, Any, Any]: ...
+
+
+class AsyncSubscribeToOrderBookDepthCallback(Protocol):
+    def __call__(self, ws, response: OrderBookDepthUpdateResponse) -> Coroutine[Any, Any, Any]: ...
