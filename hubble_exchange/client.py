@@ -4,7 +4,7 @@ from typing import List
 import websockets
 from hexbytes import HexBytes
 
-from hubble_exchange.eth import get_web3_client, get_websocket_endpoint
+from hubble_exchange.eth import get_async_web3_client, get_websocket_endpoint
 from hubble_exchange.models import (AsyncOrderBookDepthCallback,
                                     AsyncOrderStatusCallback,
                                     AsyncPlaceOrdersCallback,
@@ -25,7 +25,7 @@ class HubbleClient:
         if not self.trader_address:
             raise ValueError("Cannot determine trader address from private key")
 
-        self.web3_client = get_web3_client()
+        self.web3_client = get_async_web3_client()
         self.websocket_endpoint = get_websocket_endpoint()
         self.order_book_client = OrderBookClient(private_key)
 
@@ -33,15 +33,15 @@ class HubbleClient:
         self.order_book_client.set_transaction_mode(mode)
 
     async def get_order_book(self, market: int, callback: AsyncOrderBookDepthCallback):
-        order_book_depth = self.web3_client.eth.get_order_book_depth(market)
+        order_book_depth = await self.web3_client.eth.get_order_book_depth(market)
         return await callback(order_book_depth)
 
     async def get_margin_and_positions(self, callback: AsyncPositionCallback):
-        response = self.web3_client.eth.get_margin_and_positions(self.trader_address)
+        response = await self.web3_client.eth.get_margin_and_positions(self.trader_address)
         return await callback(response)
 
     async def get_order_status(self, order_id: HexBytes, callback: AsyncOrderStatusCallback):
-        response = self.web3_client.eth.get_order_status(order_id.hex()) # type: ignore
+        response = await self.web3_client.eth.get_order_status(order_id.hex()) # type: ignore
         return await callback(response)
 
     async def place_orders(self, orders: List[Order], callback: AsyncPlaceOrdersCallback, tx_options = None, mode=None):
@@ -64,7 +64,7 @@ class HubbleClient:
             if order.salt in [None, 0]:
                 order.salt = get_new_salt()
 
-        response = self.order_book_client.place_orders(orders, tx_options, mode)
+        response = await self.order_book_client.place_orders(orders, tx_options, mode)
         return await callback(response)
 
     async def place_single_order(
@@ -79,7 +79,7 @@ class HubbleClient:
             salt=get_new_salt(),
             reduce_only=reduce_only,
         )
-        order_hash = self.order_book_client.place_order(order, tx_options, mode)
+        order_hash = await self.order_book_client.place_order(order, tx_options, mode)
         order.id = order_hash
         return await callback(order)
 
@@ -87,7 +87,7 @@ class HubbleClient:
         if len(orders) > 100:
             raise ValueError("Cannot cancel more than 100 orders at once")
 
-        self.order_book_client.cancel_orders(orders, tx_options, mode)
+        await self.order_book_client.cancel_orders(orders, tx_options, mode)
         return await callback()
 
     async def cancel_order_by_id(self, order_id: HexBytes, callback, tx_options = None, mode=None):
