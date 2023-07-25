@@ -11,6 +11,10 @@ def float_to_scaled_int(val: float, scale: int) -> int:
     return int(big_float)
 
 
+def int_to_scaled_float(val: int, scale: int) -> float:
+    return float(val) / (10 ** scale)
+
+
 def get_address_from_private_key(private_key: str) -> Address:
     account = Account.from_key(private_key)
     return account.address

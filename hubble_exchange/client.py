@@ -1,5 +1,5 @@
 import json
-from typing import List
+from typing import Dict, List
 
 import websockets
 from hexbytes import HexBytes
@@ -10,8 +10,10 @@ from hubble_exchange.models import (AsyncOrderBookDepthCallback,
                                     AsyncPlaceOrdersCallback,
                                     AsyncPositionCallback,
                                     AsyncSubscribeToOrderBookDepthCallback,
-                                    Order, OrderBookDepthUpdateResponse,
-                                    OrderStatusResponse, WebsocketResponse)
+                                    ConfirmationMode, Order,
+                                    OrderBookDepthUpdateResponse,
+                                    OrderStatusResponse, TraderFeedUpdate,
+                                    WebsocketResponse)
 from hubble_exchange.order_book import OrderBookClient, TransactionMode
 from hubble_exchange.utils import (float_to_scaled_int,
                                    get_address_from_private_key, get_new_salt)
@@ -106,6 +108,9 @@ class HubbleClient:
         response = await self.cancel_orders([order], callback, tx_options, mode)
         return await callback(response)
 
+    async def get_order_fills(self, order_id: str) -> List[Dict]:
+        return await self.order_book_client.get_order_fills(order_id)
+
     async def subscribe_to_order_book_depth(
         self, market: int, callback: AsyncSubscribeToOrderBookDepthCallback
     ) -> None:
@@ -131,4 +136,26 @@ class HubbleClient:
                         bids=response.params['result']['b'],
                         asks=response.params['result']['a'],
                     )
+                    await callback(ws, response)
+
+    async def subscribe_to_trader_updates(
+        self, update_type: ConfirmationMode, callback
+    ) -> None:
+        async with websockets.connect(self.websocket_endpoint) as ws:
+            msg = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "trading_subscribe",
+                "params": ["streamTraderUpdates", self.trader_address, update_type.value]
+            }
+            await ws.send(json.dumps(msg))
+
+            async for message in ws:
+                message_json = json.loads(message)
+                if message_json.get('result'):
+                    # ignore because it's a subscription confirmation with subscription id
+                    continue
+                response = WebsocketResponse(**message_json)
+                if response.method and response.method == "trading_subscription":
+                    response = TraderFeedUpdate(**response.params['result'])
                     await callback(ws, response)

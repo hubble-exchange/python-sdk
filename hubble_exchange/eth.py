@@ -10,7 +10,7 @@ from web3.eth.async_eth import AsyncEth
 from web3.exceptions import TimeExhausted
 from web3.main import Web3, get_async_default_modules
 from web3.method import Method, default_root_munger
-from web3.middleware import async_geth_poa_middleware
+from web3.middleware import async_geth_poa_middleware, geth_poa_middleware, construct_simple_cache_middleware
 from web3.middleware.async_cache import _async_simple_cache_middleware
 from web3.types import RPCEndpoint, _Hash32
 
@@ -106,6 +106,9 @@ def get_sync_web3_client() -> Web3:
     rpc_endpoint = get_rpc_endpoint()
 
     web3_client = Web3(HTTPProvider(rpc_endpoint))
+    web3_client.middleware_onion.inject(geth_poa_middleware, layer=0)
+
+    web3_client.middleware_onion.add(construct_simple_cache_middleware(), name="cache")
     return web3_client
 
 

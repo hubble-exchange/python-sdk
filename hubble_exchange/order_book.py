@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from enum import Enum
 from typing import Any, Dict, List
 
@@ -11,7 +12,8 @@ from hubble_exchange.eip712 import get_order_hash
 from hubble_exchange.eth import HubblenetWeb3 as Web3
 from hubble_exchange.eth import get_async_web3_client, get_sync_web3_client
 from hubble_exchange.models import Order
-from hubble_exchange.utils import get_address_from_private_key
+from hubble_exchange.utils import (get_address_from_private_key,
+                                   int_to_scaled_float)
 
 # read abi from file
 HERE = os.path.dirname(__file__)
@@ -77,6 +79,23 @@ class OrderBookClient(object):
         tx_options.update(custom_tx_options or {})
 
         await self._send_orderbook_transaction("cancelOrders", [cancel_order_payload], tx_options, mode)
+
+    async def get_order_fills(self, order_id: str) -> List[Dict]:
+        orders_matched_events = await self.order_book.events.OrderMatched().get_logs(
+            {"orderHash": order_id},
+            fromBlock='earliest',
+        )
+
+        fills = []
+        for event in orders_matched_events:
+            fills.append({
+                "block_number": event.blockNumber,
+                "transaction_hash": event.transactionHash,
+                "timestamp": event.args.timestamp,
+                "fill_amount": int_to_scaled_float(event.args.fillAmount, 18),
+                "price": int_to_scaled_float(event.args.price, 6),
+            })
+        return fills
 
     async def _get_nonce(self) -> int:
         if self.nonce is None:

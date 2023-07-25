@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Any, Coroutine, List
+from enum import Enum
+from typing import Any, Coroutine, Dict, List
 
 from eth_typing import Address
 from hexbytes import HexBytes
@@ -124,6 +125,19 @@ class OrderBookDepthUpdateResponse:
     asks: List[List[str]]
 
 
+@dataclass
+class TraderFeedUpdate:
+    Trader: Address
+    OrderId: HexBytes
+    OrderType: str
+    Removed: bool
+    EventName: str
+    Args: Dict
+    BlockNumber: int
+    BlockStatus: str
+    Timestamp: int
+
+
 class AsyncOrderBookDepthCallback(Protocol):
     def __call__(self, response: OrderBookDepthResponse) -> Coroutine[Any, Any, Any]: ...
 
@@ -142,3 +156,8 @@ class AsyncPlaceOrdersCallback(Protocol):
 
 class AsyncSubscribeToOrderBookDepthCallback(Protocol):
     def __call__(self, ws, response: OrderBookDepthUpdateResponse) -> Coroutine[Any, Any, Any]: ...
+
+
+class ConfirmationMode(Enum):
+    head = "head"
+    accepted = "accepted"

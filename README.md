@@ -57,6 +57,9 @@ async def main():
     # get current margin and positions(uses the address for which private key is set)
     positions = await client.get_margin_and_positions(callback)
 
+    # get order fills
+    order_fills = await client.get_order_fills
+
     # subscribe to order book updates for market = 0; receives a new message every second(only for those prices where the quantity has changed)
     async def on_message(ws, message):
         print(f"Received orderbook update: {message}")
@@ -109,4 +112,18 @@ placed_orders = await client.place_orders(orders, callback, mode=TransactionMode
 # or set the default mode for all transactions
 
 client.set_transaction_mode(TransactionMode.wait_for_head)
+```
+
+## Trader feed
+
+All order updates related to a particular trader can be subscribed to using the `subscribe_to_trader_updates` method.
+It can be subscribed in 2 confirmation modes - head block or accepted block. Events received in head block mode are not finalised and can be reverted. When an event is removed from the chain, the client will receive a `removed=True` event. Events received in accepted block mode are finalised and will alwats have `removed=False`.
+
+```python
+import os
+from hubble_exchange import HubbleClient, ConfirmationMode
+
+async def main():
+    client = HubbleClient(os.getenv("PRIVATE_KEY"))
+    await client.subscribe_to_trader_updates(ConfirmationMode.accepted, callback)
 ```
