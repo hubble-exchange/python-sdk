@@ -147,12 +147,12 @@ client.set_transaction_mode(TransactionMode.wait_for_head)
 ## Waiting for response in place_orders and cancel_orders
 
 The `place_orders` and `cancel_orders` methods can be called in 2 modes - wait for response or don't wait for response.
-To get the acknowledgement of the transaction, use wait_for_response=True. The response will be a list of dicts with order ids and success boolean. Waiting for response will be slower because this can be confirmed only after the transaction is mined(accepted).
-When using wait_for_response=True, the sdk will automatically set the transaction mode to TransactionMode.wait_for_accept because the response can be confirmed only after the transaction is mined.
+To get the acknowledgement of the transaction, use `wait_for_response=True`. The response will be a list of dicts with order ids and success boolean. Waiting for response will be slower because this can be confirmed only after the transaction is mined(accepted).
+When using `wait_for_response=True`, the sdk will automatically set the transaction mode to `TransactionMode.wait_for_accept` because the response can be confirmed only after the transaction is mined.
 
 Alternatively, the client can also use trader feed to listen to all the updates. This is faster when done with ConfirmationMode.head
 
 ## Atomic in cancel_orders
 
 The `cancel_orders` method can be called in 2 modes - atomic or non-atomic. In atomic mode, all the orders will be cancelled only if all the orders are successfully cancelled. In non-atomic mode, the orders will be cancelled one by one and the response will be a list of dicts with order ids and success boolean.
-When used in combination with wait_for_response=True, the response will be a list of dicts with order ids and success boolean.
+When used in combination with `wait_for_response=True`, the response will be a list of dicts with order ids and success boolean.
