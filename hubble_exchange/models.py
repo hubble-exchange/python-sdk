@@ -136,6 +136,20 @@ class TraderFeedUpdate:
     BlockNumber: int
     BlockStatus: str
     Timestamp: int
+    TransactionHash: HexBytes
+
+@dataclass
+class MarketFeedUpdate:
+    Trader: Address
+    Market: int
+    Size: float
+    Price: float
+    Removed: bool
+    EventName: str
+    BlockNumber: int
+    BlockStatus: str
+    Timestamp: int
+    TransactionHash: HexBytes
 
 
 class AsyncOrderBookDepthCallback(Protocol):

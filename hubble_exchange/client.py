@@ -4,13 +4,14 @@ from typing import Dict, List
 import websockets
 from hexbytes import HexBytes
 
+from hubble_exchange.eip712 import get_order_hash
 from hubble_exchange.eth import get_async_web3_client, get_websocket_endpoint
 from hubble_exchange.models import (AsyncOrderBookDepthCallback,
                                     AsyncOrderStatusCallback,
                                     AsyncPlaceOrdersCallback,
                                     AsyncPositionCallback,
                                     AsyncSubscribeToOrderBookDepthCallback,
-                                    ConfirmationMode, Order,
+                                    ConfirmationMode, MarketFeedUpdate, Order,
                                     OrderBookDepthUpdateResponse,
                                     OrderStatusResponse, TraderFeedUpdate,
                                     WebsocketResponse)
@@ -34,6 +35,9 @@ class HubbleClient:
     def set_transaction_mode(self, mode: TransactionMode):
         self.order_book_client.set_transaction_mode(mode)
 
+    async def get_markets(self):
+        return await self.order_book_client.get_markets()
+
     async def get_order_book(self, market: int, callback: AsyncOrderBookDepthCallback):
         order_book_depth = await self.web3_client.eth.get_order_book_depth(market)
         return await callback(order_book_depth)
@@ -46,7 +50,7 @@ class HubbleClient:
         response = await self.web3_client.eth.get_order_status(order_id.hex()) # type: ignore
         return await callback(response)
 
-    async def place_orders(self, orders: List[Order], callback: AsyncPlaceOrdersCallback, tx_options = None, mode=None):
+    async def place_orders(self, orders: List[Order], wait_for_response: bool, callback: AsyncPlaceOrdersCallback, tx_options = None, mode=None):
         if len(orders) > 75:
             raise ValueError("Cannot place more than 75 orders at once")
 
@@ -66,33 +70,66 @@ class HubbleClient:
             if order.salt in [None, 0]:
                 order.salt = get_new_salt()
 
-        response = await self.order_book_client.place_orders(orders, tx_options, mode)
-        return await callback(response)
+        for order in orders:
+            order_hash = get_order_hash(order)
+            order.id = order_hash
 
-    async def place_single_order(
-        self, market: int, base_asset_quantity: float, price: float, reduce_only: bool, callback, tx_options = None, mode=None
-    ) -> Order:
-        order = Order(
-            id=None,
-            amm_index=market,
-            trader=self.trader_address,
-            base_asset_quantity=float_to_scaled_int(base_asset_quantity, 18),
-            price=float_to_scaled_int(price, 6),
-            salt=get_new_salt(),
-            reduce_only=reduce_only,
-        )
-        order_hash = await self.order_book_client.place_order(order, tx_options, mode)
-        order.id = order_hash
-        return await callback(order)
+        # if the response if requested then we'll have to wait for the transaction to be mined
+        # This is because the receipt is generated only after the transaction is mined(accepted)
+        if wait_for_response:
+            mode = TransactionMode.wait_for_accept
 
-    async def cancel_orders(self, orders: List[Order], callback, tx_options = None, mode=None):
+        tx_hash = await self.order_book_client.place_orders(orders, tx_options, mode)
+        if wait_for_response:
+            receipt = await self.web3_client.eth.get_transaction_receipt(tx_hash)
+
+            events = self.order_book_client.get_events_from_receipt(receipt, "OrderPlaced")
+            response = []
+            for event in events:
+                order_id = event.args.orderHash
+                response.append({
+                    "order_id": order_id,
+                    "success": True
+                })
+            return await callback(response)
+        else:
+            return await callback(orders)
+
+    async def cancel_orders(self, orders: List[Order], atomic: bool, wait_for_response: bool, callback, tx_options = None, mode=None):
         if len(orders) > 100:
             raise ValueError("Cannot cancel more than 100 orders at once")
 
-        await self.order_book_client.cancel_orders(orders, tx_options, mode)
-        return await callback()
+        if atomic is None:
+            atomic = True  # default mode
 
-    async def cancel_order_by_id(self, order_id: HexBytes, callback, tx_options = None, mode=None):
+        # if the response if requested then we'll have to wait for the transaction to be mined
+        # This is because the receipt is generated only after the transaction is mined(accepted)
+        if wait_for_response:
+            mode = TransactionMode.wait_for_accept
+
+        tx_hash = await self.order_book_client.cancel_orders(orders, atomic, tx_options, mode)
+
+        if wait_for_response:
+            receipt = await self.web3_client.eth.get_transaction_receipt(tx_hash)
+
+            response = []
+            cancelled_events = self.order_book_client.get_events_from_receipt(receipt, "OrderCancelled")
+            for event in cancelled_events:
+                response.append({
+                    "order_id": event.args.orderHash,
+                    "success": True
+                })
+            skipped_events = self.order_book_client.get_events_from_receipt(receipt, "SkippedCancelOrder")
+            for event in skipped_events:
+                response.append({
+                    "order_id": event.args.orderHash,
+                    "success": False,
+                })
+            return await callback(response)
+        else:
+            return await callback(orders)
+
+    async def cancel_order_by_id(self, order_id: HexBytes, wait_for_response: bool, callback, tx_options = None, mode=None):
         async def order_status_callback(response: OrderStatusResponse) -> Order:
             position_side_multiplier = 1 if response.positionSide == "LONG" else -1
             return Order(
@@ -105,8 +142,7 @@ class HubbleClient:
                 reduce_only=response.reduceOnly,
             )
         order = await self.get_order_status(order_id, order_status_callback)
-        response = await self.cancel_orders([order], callback, tx_options, mode)
-        return await callback(response)
+        return await self.cancel_orders([order], wait_for_response, callback, tx_options, mode)
 
     async def get_order_fills(self, order_id: str) -> List[Dict]:
         return await self.order_book_client.get_order_fills(order_id)
@@ -158,4 +194,26 @@ class HubbleClient:
                 response = WebsocketResponse(**message_json)
                 if response.method and response.method == "trading_subscription":
                     response = TraderFeedUpdate(**response.params['result'])
+                    await callback(ws, response)
+
+    async def subscribe_to_market_updates(
+        self, market, update_type: ConfirmationMode, callback
+    ) -> None:
+        async with websockets.connect(self.websocket_endpoint) as ws:
+            msg = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "trading_subscribe",
+                "params": ["streamMarketTrades", market, update_type.value]
+            }
+            await ws.send(json.dumps(msg))
+
+            async for message in ws:
+                message_json = json.loads(message)
+                if message_json.get('result'):
+                    # ignore because it's a subscription confirmation with subscription id
+                    continue
+                response = WebsocketResponse(**message_json)
+                if response.method and response.method == "trading_subscription":
+                    response = MarketFeedUpdate(**response.params['result'])
                     await callback(ws, response)

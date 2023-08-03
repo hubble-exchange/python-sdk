@@ -1,15 +1,15 @@
 import json
 import os
-import time
 from enum import Enum
 from typing import Any, Dict, List
 
 from hexbytes import HexBytes
+from web3.logs import DISCARD
 
 from hubble_exchange.constants import (CHAIN_ID, GAS_PER_ORDER, MAX_GAS_LIMIT,
+                                       ClearingHouseContractAddress,
                                        OrderBookContractAddress)
 from hubble_exchange.eip712 import get_order_hash
-from hubble_exchange.eth import HubblenetWeb3 as Web3
 from hubble_exchange.eth import get_async_web3_client, get_sync_web3_client
 from hubble_exchange.models import Order
 from hubble_exchange.utils import (get_address_from_private_key,
@@ -19,7 +19,15 @@ from hubble_exchange.utils import (get_address_from_private_key,
 HERE = os.path.dirname(__file__)
 with open(f"{HERE}/contract_abis/OrderBook.json", 'r') as abi_file:
     abi_str = abi_file.read()
-    ABI = json.loads(abi_str)
+    ORDERBOOK_ABI = json.loads(abi_str)
+
+with open(f"{HERE}/contract_abis/ClearingHouse.json", 'r') as abi_file:
+    abi_str = abi_file.read()
+    CLEARINGHOUSE_ABI = json.loads(abi_str)
+
+with open(f"{HERE}/contract_abis/AMM.json", 'r') as abi_file:
+    abi_str = abi_file.read()
+    AMM_ABI = json.loads(abi_str)
 
 
 class TransactionMode(Enum):
@@ -34,7 +42,7 @@ class OrderBookClient(object):
         self.public_address = get_address_from_private_key(private_key)
 
         self.web3_client = get_async_web3_client()
-        self.order_book = self.web3_client.eth.contract(address=OrderBookContractAddress, abi=ABI)
+        self.order_book_contract = self.web3_client.eth.contract(address=OrderBookContractAddress, abi=ORDERBOOK_ABI)
 
         # get nonce from sync web3 client
         sync_web3 = get_sync_web3_client()
@@ -45,6 +53,18 @@ class OrderBookClient(object):
     def set_transaction_mode(self, mode: TransactionMode):
         self.transaction_mode = mode
 
+    async def get_markets(self):
+        clearing_house_contract = self.web3_client.eth.contract(address=ClearingHouseContractAddress, abi=CLEARINGHOUSE_ABI)
+        amm_addresses = await clearing_house_contract.functions.getAMMs().call()
+
+        markets = {}
+        for i, amm_address in enumerate(amm_addresses):
+            amm_contract = self.web3_client.eth.contract(address=amm_address, abi=AMM_ABI)
+            name = await amm_contract.functions.name().call()
+            markets[i] = name
+
+        return markets
+
     async def place_order(self, order: Order, custom_tx_options=None, mode=None) -> HexBytes:
         order_hash = get_order_hash(order)
 
@@ -54,7 +74,7 @@ class OrderBookClient(object):
         await self._send_orderbook_transaction("placeOrder", [order.to_dict()], tx_options, mode)
         return order_hash
 
-    async def place_orders(self, orders: List[Order], custom_tx_options=None, mode=None) -> List[Order]:
+    async def place_orders(self, orders: List[Order], custom_tx_options=None, mode=None):
         """
         Place multiple orders at once. This is more efficient than placing them one by one.
         """
@@ -67,10 +87,9 @@ class OrderBookClient(object):
 
         tx_options = {'gas': min(GAS_PER_ORDER * len(orders), MAX_GAS_LIMIT)}
         tx_options.update(custom_tx_options or {})
-        await self._send_orderbook_transaction("placeOrders", [place_order_payload], tx_options, mode)
-        return orders
+        return await self._send_orderbook_transaction("placeOrders", [place_order_payload], tx_options, mode)
 
-    async def cancel_orders(self, orders: list[Order], custom_tx_options=None, mode=None) -> None:
+    async def cancel_orders(self, orders: list[Order], atomic, custom_tx_options=None, mode=None):
         cancel_order_payload = []
         for order in orders:
             cancel_order_payload.append(order.to_dict())
@@ -78,10 +97,11 @@ class OrderBookClient(object):
         tx_options = {'gas': min(GAS_PER_ORDER * len(orders), MAX_GAS_LIMIT)}
         tx_options.update(custom_tx_options or {})
 
-        await self._send_orderbook_transaction("cancelOrders", [cancel_order_payload], tx_options, mode)
+        method_name = "cancelOrdersNoisy" if atomic else "cancelOrders"
+        return await self._send_orderbook_transaction(method_name, [cancel_order_payload], tx_options, mode)
 
     async def get_order_fills(self, order_id: str) -> List[Dict]:
-        orders_matched_events = await self.order_book.events.OrderMatched().get_logs(
+        orders_matched_events = await self.order_book_contract.events.OrderMatched().get_logs(
             {"orderHash": order_id},
             fromBlock='earliest',
         )
@@ -97,6 +117,10 @@ class OrderBookClient(object):
             })
         return fills
 
+    def get_events_from_receipt(self, receipt, event_name):
+        event = getattr(self.order_book_contract.events, event_name)
+        return event().process_receipt(receipt, DISCARD)
+
     async def _get_nonce(self) -> int:
         if self.nonce is None:
             self.nonce = await self.web3_client.eth.get_transaction_count(self.public_address)
@@ -108,13 +132,11 @@ class OrderBookClient(object):
         if mode is None:
             mode = self.transaction_mode
 
-        method = getattr(self.order_book.functions, method_name)
+        method = getattr(self.order_book_contract.functions, method_name)
         nonce = await self._get_nonce()
         tx_params = {
             'from': self.public_address,
             'chainId': CHAIN_ID,
-            'maxFeePerGas': Web3.to_wei(60, 'gwei'),  # base + tip
-            'maxPriorityFeePerGas': 0,  # tip
             'nonce': nonce,
         }
         if tx_options:
