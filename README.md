@@ -68,6 +68,121 @@ async def main():
     asyncio.run(client.subscribe_to_order_book_depth(0, callback=on_message))
 ```
 
+---
+
+### GetPositionsResponse description
+- margin: trader's margin
+- reservedMargin: trader's reserved margin
+- positions: List[Position]
+
+### Position description
+- market: market id
+- openNotional: open notional
+- size: size of the position
+- unrealisedFunding: unrealised funding payment for this position
+- liquidationThreshold: max amount of size that can be liquidated at once
+- notionalPosition: notional position size
+- unrealisedProfit: unrealised profit on this position
+- marginFraction: margin/notional position
+- liquidationPrice: the asset price at which this position might get liquidated
+- markPrice: latest price of this market
+
+### OrderStatusResponse description
+- executedQty: executed quantity
+- orderId: order id
+- origQty: total order quantity
+- price: order price
+- reduceOnly: whether the order is reduce-only or not
+- positionSide: (LONG|SHORT)
+- status: order status (NEW|FILLED|CANCELED|REJECTED|PARTIALLY_FILLED)
+- symbol: market id
+- time: time when the order was placed in unix format
+- type: LIMIT_ORDER
+- updateTime: time when the order was last updated in unix format
+- salt: order salt
+
+## Orderbook depth feed
+Orderbook depth feed can be subscribed to using the `subscribe_to_order_book_depth` method. It emits the change in orderbook depth every second. It only emits the prices where the quantity has changed, but with absolute quantities(not the change).
+
+```python
+import os
+from hubble_exchange import HubbleClient
+
+async def main():
+    client = HubbleClient(os.getenv("PRIVATE_KEY"))
+    # subscribe to market id 0
+    await client.subscribe_to_order_book_depth(0, callback=callback)
+```
+
+### OrderBookDepthUpdateResponse description
+- T: timestamp
+- symbol: market id
+- bids: list of [price, quantity] for bids
+- asks: list of [price, quantity] for asks
+
+
+## Trader feed
+
+All order updates related to a particular trader can be subscribed to using the `subscribe_to_trader_updates` method.
+It can be subscribed in 2 confirmation modes - head block or accepted block. Events received in head block mode are not finalised and can be reverted. When an event is removed from the chain, the client will receive a `removed=True` event. Events received in accepted block mode are finalised and will alwats have `removed=False`.
+
+```python
+import os
+from hubble_exchange import HubbleClient, ConfirmationMode
+
+async def main():
+    client = HubbleClient(os.getenv("PRIVATE_KEY"))
+    await client.subscribe_to_trader_updates(ConfirmationMode.accepted, callback)
+```
+
+
+### TraderFeedUpdate description
+
+- Trader: address of the trader
+- OrderId: order id
+- OrderType: order type - "limit" order or "ioc" (market order)
+- Removed: whether the event is being removed or not
+- EventName: name of the contract event (OrderPlaced|OrderMatched|OrderCancelled)
+- Args: args is a dynamic field and it contains information about the event. OrderPlaced event contains order object, OrderMatched event contains fillAmount and price
+- BlockNumber: block number in which the transaction was included
+- BlockStatus: (head|accepted) whether the block is accepted or only a preferred block(head block)
+- Timestamp: timestamp of the block in unix format
+- TransactionHash: transaction hash
+
+Removed events are emmitted during chain reorgs, and are most likely to be temporary. They are only emmitted when subscribing to head block events. If removed=True, the client might need to do a reverse operation for the given event. For example if an OrderMatched event is received with removed=True, the client should add the fillAmount back to unfilled quantity of the order.
+
+## Market feed
+
+All trades of a particular market can be subscribed to using the `subscribe_to_market_updates` method.
+Similar to the trader feed, it has 2 confirmation modes - head block or accepted block.
+
+```python
+import os
+from hubble_exchange import HubbleClient, ConfirmationMode
+
+async def main():
+    client = HubbleClient(os.getenv("PRIVATE_KEY"))
+    # subscribe to market id 0
+    await client.subscribe_to_market_updates(0, ConfirmationMode.accepted, callback)
+```
+
+### MarketFeedUpdate description
+
+- Trader: address of the trader who performed the trade
+- Market: market id
+- Size: size of the trade in decimals
+- Price: price at which it was executed
+- Removed: whether the event is being removed or not
+- EventName: name of the contract event (PositionModified)
+- BlockNumber: block number in which the transaction was included
+- BlockStatus: (head|accepted) whether the block is accepted or only a preferred block(head block)
+- Timestamp: timestamp of the block in unix format
+- TransactionHash: transaction hash
+
+Removed events are emmitted during chain reorgs, and are most likely to be temporary. They are only emmitted when subscribing to head block events. If removed=True, the client might need to do a reverse operation for the given event.
+
+---
+
 ## Custom transaction options
 
 The following options can be passed to the client to override the default
@@ -95,35 +210,6 @@ placed_orders = await client.place_orders(orders, callback, {
 })
 ```
 
-## Trader feed
-
-All order updates related to a particular trader can be subscribed to using the `subscribe_to_trader_updates` method.
-It can be subscribed in 2 confirmation modes - head block or accepted block. Events received in head block mode are not finalised and can be reverted. When an event is removed from the chain, the client will receive a `removed=True` event. Events received in accepted block mode are finalised and will alwats have `removed=False`.
-
-```python
-import os
-from hubble_exchange import HubbleClient, ConfirmationMode
-
-async def main():
-    client = HubbleClient(os.getenv("PRIVATE_KEY"))
-    await client.subscribe_to_trader_updates(ConfirmationMode.accepted, callback)
-```
-
-## Market feed
-
-All trades of a particular market can be subscribed to using the `subscribe_to_market_updates` method.
-Similar to the trader feed, it has 2 confirmation modes - head block or accepted block.
-
-```python
-import os
-from hubble_exchange import HubbleClient, ConfirmationMode
-
-async def main():
-    client = HubbleClient(os.getenv("PRIVATE_KEY"))
-    # subscribe to market id 0
-    await client.subscribe_to_market_updates(0, ConfirmationMode.accepted, callback)
-```
-
 ## Transaction modes
 
 There are different modes in which the client can wait for acknowledgement of the transaction. The default behaviour is to send the transaction and not wait for the acknowledgement.
@@ -143,6 +229,8 @@ placed_orders = await client.place_orders(orders, callback, mode=TransactionMode
 
 client.set_transaction_mode(TransactionMode.wait_for_head)
 ```
+
+---
 
 ## Waiting for response in place_orders and cancel_orders
 
