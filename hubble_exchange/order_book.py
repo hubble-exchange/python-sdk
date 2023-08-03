@@ -97,7 +97,7 @@ class OrderBookClient(object):
         tx_options = {'gas': min(GAS_PER_ORDER * len(orders), MAX_GAS_LIMIT)}
         tx_options.update(custom_tx_options or {})
 
-        method_name = "cancelOrdersNoisy" if atomic else "cancelOrders"
+        method_name = "cancelOrdersAtomic" if atomic else "cancelOrders"
         return await self._send_orderbook_transaction(method_name, [cancel_order_payload], tx_options, mode)
 
     async def get_order_fills(self, order_id: str) -> List[Dict]:

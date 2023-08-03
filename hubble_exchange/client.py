@@ -70,9 +70,11 @@ class HubbleClient:
             if order.salt in [None, 0]:
                 order.salt = get_new_salt()
 
+        order_ids = set()  # stores all the order ids
         for order in orders:
             order_hash = get_order_hash(order)
             order.id = order_hash
+            order_ids.add(order_hash.hex())  # add each order id to the set
 
         # if the response if requested then we'll have to wait for the transaction to be mined
         # This is because the receipt is generated only after the transaction is mined(accepted)
@@ -84,13 +86,24 @@ class HubbleClient:
             receipt = await self.web3_client.eth.get_transaction_receipt(tx_hash)
 
             events = self.order_book_client.get_events_from_receipt(receipt, "OrderPlaced")
+            event_order_ids = set()  # stores order ids present in events
             response = []
             for event in events:
                 order_id = event.args.orderHash
+                event_order_ids.add('0x' + order_id.hex())
                 response.append({
-                    "order_id": order_id,
+                    "order_id": '0x' + order_id.hex(),
                     "success": True
                 })
+
+            missing_order_ids = order_ids - event_order_ids  # order ids not present in events
+
+            for missing_id in missing_order_ids:
+                response.append({
+                    "order_id": missing_id,
+                    "success": False
+                })
+
             return await callback(response)
         else:
             return await callback(orders)
@@ -107,24 +120,42 @@ class HubbleClient:
         if wait_for_response:
             mode = TransactionMode.wait_for_accept
 
+        order_ids = set()  # stores all the order ids
+        for order in orders:
+            order_hash = get_order_hash(order)
+            order.id = order_hash
+            order_ids.add(order_hash.hex())  # add each order id to the set
+
         tx_hash = await self.order_book_client.cancel_orders(orders, atomic, tx_options, mode)
 
         if wait_for_response:
             receipt = await self.web3_client.eth.get_transaction_receipt(tx_hash)
 
             response = []
+            event_order_ids = set()
             cancelled_events = self.order_book_client.get_events_from_receipt(receipt, "OrderCancelled")
             for event in cancelled_events:
+                event_order_ids.add('0x' + event.args.orderHash.hex())
                 response.append({
-                    "order_id": event.args.orderHash,
+                    "order_id": '0x' + event.args.orderHash.hex(),
                     "success": True
                 })
             skipped_events = self.order_book_client.get_events_from_receipt(receipt, "SkippedCancelOrder")
             for event in skipped_events:
+                event_order_ids.add('0x' + event.args.orderHash.hex())
                 response.append({
-                    "order_id": event.args.orderHash,
+                    "order_id": '0x' + event.args.orderHash.hex(),
                     "success": False,
                 })
+
+            missing_order_ids = order_ids - event_order_ids  # order ids not present in events
+
+            for missing_id in missing_order_ids:
+                response.append({
+                    "order_id": missing_id,
+                    "success": False
+                })
+
             return await callback(response)
         else:
             return await callback(orders)

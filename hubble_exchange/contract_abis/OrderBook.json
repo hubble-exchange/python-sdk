@@ -471,7 +471,7 @@
         "type": "tuple[]"
       }
     ],
-    "name": "cancelOrdersNoisy",
+    "name": "cancelOrdersAtomic",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
