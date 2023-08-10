@@ -4,14 +4,15 @@ from typing import Dict, List
 import websockets
 from hexbytes import HexBytes
 
-from hubble_exchange.eip712 import get_order_hash
+from hubble_exchange.eip712 import get_ioc_order_hash, get_limit_order_hash
 from hubble_exchange.eth import get_async_web3_client, get_websocket_endpoint
 from hubble_exchange.models import (AsyncOrderBookDepthCallback,
                                     AsyncOrderStatusCallback,
                                     AsyncPlaceOrdersCallback,
                                     AsyncPositionCallback,
                                     AsyncSubscribeToOrderBookDepthCallback,
-                                    ConfirmationMode, MarketFeedUpdate, Order,
+                                    ConfirmationMode, IOCOrder, LimitOrder,
+                                    MarketFeedUpdate,
                                     OrderBookDepthUpdateResponse,
                                     OrderStatusResponse, TraderFeedUpdate,
                                     WebsocketResponse)
@@ -50,7 +51,18 @@ class HubbleClient:
         response = await self.web3_client.eth.get_order_status(order_id.hex()) # type: ignore
         return await callback(response)
 
-    async def place_orders(self, orders: List[Order], wait_for_response: bool, callback: AsyncPlaceOrdersCallback, tx_options = None, mode=None):
+    async def get_open_orders(self, market_id: int, callback: AsyncOrderStatusCallback):
+        response = await self.web3_client.eth.get_open_orders(self.trader_address, market_id)
+        return await callback(response)
+    
+    async def get_trades(self, market, start_time, end_time, callback):
+        if start_time is None or end_time is None:
+            raise ValueError("Start and end time must be specified")
+
+        response = await self.order_book_client.get_trades(self.trader_address, market, start_time, end_time)
+        return await callback(response)
+    
+    async def place_limit_orders(self, orders: List[LimitOrder], wait_for_response: bool, callback: AsyncPlaceOrdersCallback, tx_options = None, mode=None):
         if len(orders) > 75:
             raise ValueError("Cannot place more than 75 orders at once")
 
@@ -72,7 +84,7 @@ class HubbleClient:
 
         order_ids = set()  # stores all the order ids
         for order in orders:
-            order_hash = get_order_hash(order)
+            order_hash = get_limit_order_hash(order)
             order.id = order_hash
             order_ids.add(order_hash.hex())  # add each order id to the set
 
@@ -81,7 +93,7 @@ class HubbleClient:
         if wait_for_response:
             mode = TransactionMode.wait_for_accept
 
-        tx_hash = await self.order_book_client.place_orders(orders, tx_options, mode)
+        tx_hash = await self.order_book_client.place_limit_orders(orders, tx_options, mode)
         if wait_for_response:
             receipt = await self.web3_client.eth.get_transaction_receipt(tx_hash)
 
@@ -108,7 +120,67 @@ class HubbleClient:
         else:
             return await callback(orders)
 
-    async def cancel_orders(self, orders: List[Order], atomic: bool, wait_for_response: bool, callback, tx_options = None, mode=None):
+    async def place_ioc_orders(self, orders: List[IOCOrder], wait_for_response: bool, callback: AsyncPlaceOrdersCallback, tx_options = None, mode=None):
+        if len(orders) > 75:
+            raise ValueError("Cannot place more than 75 orders at once")
+
+        for order in orders:
+            if order.amm_index is None:
+                raise ValueError("Order AMM index is not set")
+            if order.base_asset_quantity is None:
+                raise ValueError("Order base asset quantity is not set")
+            if order.price is None:
+                raise ValueError("Order price is not set")
+            if order.reduce_only is None:
+                raise ValueError("Order reduce only is not set")
+            if order.expire_at is None:
+                raise ValueError("Order expiry is not set")
+
+            # trader and salt can be set automatically
+            if order.trader in [None, "0x", ""]:
+                order.trader = self.trader_address
+            if order.salt in [None, 0]:
+                order.salt = get_new_salt()
+
+        order_ids = set()  # stores all the order ids
+        for order in orders:
+            order_hash = get_ioc_order_hash(order)
+            order.id = order_hash
+            order_ids.add(order_hash.hex())  # add each order id to the set
+
+        # if the response if requested then we'll have to wait for the transaction to be mined
+        # This is because the receipt is generated only after the transaction is mined(accepted)
+        if wait_for_response:
+            mode = TransactionMode.wait_for_accept
+
+        tx_hash = await self.order_book_client.place_ioc_orders(orders, tx_options, mode)
+        if wait_for_response:
+            receipt = await self.web3_client.eth.get_transaction_receipt(tx_hash)
+
+            events = self.order_book_client.get_events_from_receipt(receipt, "OrderPlaced", contract_name="ioc")
+            event_order_ids = set()  # stores order ids present in events
+            response = []
+            for event in events:
+                order_id = event.args.orderHash
+                event_order_ids.add('0x' + order_id.hex())
+                response.append({
+                    "order_id": '0x' + order_id.hex(),
+                    "success": True
+                })
+
+            missing_order_ids = order_ids - event_order_ids  # order ids not present in events
+
+            for missing_id in missing_order_ids:
+                response.append({
+                    "order_id": missing_id,
+                    "success": False
+                })
+
+            return await callback(response)
+        else:
+            return await callback(orders)
+
+    async def cancel_limit_orders(self, orders: List[LimitOrder], atomic: bool, wait_for_response: bool, callback, tx_options = None, mode=None):
         if len(orders) > 100:
             raise ValueError("Cannot cancel more than 100 orders at once")
 
@@ -122,7 +194,7 @@ class HubbleClient:
 
         order_ids = set()  # stores all the order ids
         for order in orders:
-            order_hash = get_order_hash(order)
+            order_hash = get_limit_order_hash(order)
             order.id = order_hash
             order_ids.add(order_hash.hex())  # add each order id to the set
 
@@ -161,9 +233,9 @@ class HubbleClient:
             return await callback(orders)
 
     async def cancel_order_by_id(self, order_id: HexBytes, wait_for_response: bool, callback, tx_options = None, mode=None):
-        async def order_status_callback(response: OrderStatusResponse) -> Order:
+        async def order_status_callback(response: OrderStatusResponse) -> LimitOrder:
             position_side_multiplier = 1 if response.positionSide == "LONG" else -1
-            return Order(
+            return LimitOrder(
                 id=order_id,
                 amm_index=response.symbol,
                 trader=self.trader_address,
@@ -173,7 +245,7 @@ class HubbleClient:
                 reduce_only=response.reduceOnly,
             )
         order = await self.get_order_status(order_id, order_status_callback)
-        return await self.cancel_orders([order], wait_for_response, callback, tx_options, mode)
+        return await self.cancel_limit_orders([order], wait_for_response, callback, tx_options, mode)
 
     async def get_order_fills(self, order_id: str) -> List[Dict]:
         return await self.order_book_client.get_order_fills(order_id)

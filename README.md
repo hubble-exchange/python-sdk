@@ -22,7 +22,7 @@ export HUBBLE_BLOCKCHAIN_ID=iKMFgo49o4X3Pd3UWUkmPwjKom3xZz3Vo6Y1kkwL2Ce6DZaPm
 
 ```python
 import os
-from hubble_exchange import HubbleClient, OrderBookDepthResponse
+from hubble_exchange import HubbleClient, OrderBookDepthResponse, LimitOrder, IOCOrder
 
 
 async def main():
@@ -36,18 +36,25 @@ async def main():
     # get a dict of all market ids and names - for example {0: "ETH-Perp", 1: "AVAX-Perp"}
     markets = await client.get_markets()
 
-    # place multiple orders at once
-    orders = []
-    orders.append(Order.new(3, 1, 1.2, False)) # market = 3, qty = 1, price = 1.2, reduce_only = False
-    orders.append(Order.new(0, 0.1, 1800, False)) # market = 0, qty = 0.1, price = 1800, reduce_only = False
+    # place limit orders
+    limit_orders = []
+    limit_orders.append(LimitOrder.new(3, 1, 1.2, False)) # market = 3, qty = 1, price = 1.2, reduce_only = False
+    limit_orders.append(LimitOrder.new(0, 0.1, 1800, False)) # market = 0, qty = 0.1, price = 1800, reduce_only = False
     # placed_orders list will contain the order ids for the orders placed
-    placed_orders = await client.place_orders(orders, True, callback)
+    placed_orders = await client.place_limit_orders(limit_orders, True, callback)
 
-    # get order status
+    # place ioc orders
+    ioc_orders = []
+    ioc_orders.append(IOCOrder.new(3, 1, 1.2, False, 3)) # market = 3, qty = 1, price = 1.2, reduce_only = False, expiry = 3 seconds
+    ioc_orders.append(IOCOrder.new(0, 0.1, 1800, False, 3)) # market = 0, qty = 0.1, price = 1800, reduce_only = False, expiry = 3 seconds
+    # placed_orders list will contain the order ids for the orders placed
+    placed_orders = await client.place_ioc_orders(ioc_orders, True, callback)
+
+    # get order status - only works for limit orders because ioc orders are ephemeral
     order_status = await client.get_order_status(order.id, callback)
     
     # cancel an order
-    await client.cancel_orders([order], True, True, callback)
+    await client.cancel_limit_orders([order], True, True, callback)
 
     # order can also be cancelled by order id
     await client.cancel_order_by_id(order.id, True, callback)
@@ -60,6 +67,16 @@ async def main():
 
     # get order fills
     order_fills = await client.get_order_fills()
+
+    # get all open orders
+    open_orders = await client.get_open_orders(None, callback)
+    # get open orders for market_id = 0
+    open_orders = await client.get_open_orders(0, callback)
+
+    # get user trades in all markets in a time range
+    await client.get_trades(None, 1691669740, 1691583340, callback)
+    # get user trades in market_id = 3 in a time range
+    await client.get_trades(3, 1691669740, 1691583340, callback)
 
     # subscribe to order book updates for market = 0; receives a new message every second(only for those prices where the quantity has changed)
     async def on_message(ws, message):
@@ -181,7 +198,53 @@ async def main():
 
 Removed events are emmitted during chain reorgs, and are most likely to be temporary. They are only emmitted when subscribing to head block events. If removed=True, the client might need to do a reverse operation for the given event.
 
----
+
+## Open orders
+
+Returns all open orders of the trader. It can be filtered by market id.
+
+```python
+# get all open orders
+open_orders = await client.get_open_orders(None, callback)
+# get open orders for market_id = 0
+open_orders = await client.get_open_orders(0, callback)
+```
+
+### OpenOrder description
+
+- Market: market id
+- Price: order price
+- Size: order size
+- FilledSize: filled size
+- Timestamp: timestamp of order place transaction in unix format
+- Salt: order salt
+- OrderId: order id
+- ReduceOnly: whether the order is reduce-only or not
+- OrderType: order type - "limit" order or "ioc" (market order)
+
+
+## Get historical user trades
+
+Returns all trades of the trader. It can be filtered by market id.
+
+```python
+# get user trades in all markets in a time range
+await client.get_trades(None, 1691669740, 1691583340, callback)
+# get user trades in market_id = 3 in a time range
+await client.get_trades(3, 1691669740, 1691583340, callback)
+```
+
+### Trade description
+- BlockNumber: block number in which the order match transaction was included
+- TransactionHash: transaction hash
+- Market: market id
+- Timestamp: timestamp of the block in unix format
+- TradedAmount: amount of the trade in decimals
+- Price: price at which it was executed
+- RealizedPnl: realized pnl of the trade in USD
+- OpenNotional: open notional
+- ExecutionMode: execution mode - "maker" or "taker"
+
 
 ## Custom transaction options
 
@@ -196,14 +259,14 @@ The following options can be passed to the client to override the default
 },
 ```
 
-It can be used for `place_orders`, `place_single_order`, `cancel_orders`, `cancel_order_by_id` methods.
+It can be used for `place_limit_orders`, `cancel_limit_orders`, `cancel_order_by_id` methods.
 Example:
 ```python
 
 from web3 import Web3
 
 client = HubbleClient(os.getenv("PRIVATE_KEY"))
-placed_orders = await client.place_orders(orders, callback, {
+placed_orders = await client.place_limit_orders(orders, callback, {
     "gas": 500_000,
     "maxFeePerGas": Web3.to_wei(80, 'gwei'),
     "maxPriorityFeePerGas": Web3.to_wei(20, 'gwei'),
@@ -223,7 +286,7 @@ Example:
 ```python
 from hubble_exchange import TransactionMode
 client = HubbleClient(os.getenv("PRIVATE_KEY"))
-placed_orders = await client.place_orders(orders, callback, mode=TransactionMode.wait_for_accept)
+placed_orders = await client.place_limit_orders(orders, callback, mode=TransactionMode.wait_for_accept)
 
 # or set the default mode for all transactions
 
@@ -232,15 +295,15 @@ client.set_transaction_mode(TransactionMode.wait_for_head)
 
 ---
 
-## Waiting for response in place_orders and cancel_orders
+## Waiting for response in place_limit_orders and cancel_limit_orders
 
-The `place_orders` and `cancel_orders` methods can be called in 2 modes - wait for response or don't wait for response.
+The `place_limit_orders`, `place_ioc_orders`, and `cancel_limit_orders` methods can be called in 2 modes - wait for response or don't wait for response.
 To get the acknowledgement of the transaction, use `wait_for_response=True`. The response will be a list of dicts with order ids and success boolean. Waiting for response will be slower because this can be confirmed only after the transaction is mined(accepted).
 When using `wait_for_response=True`, the sdk will automatically set the transaction mode to `TransactionMode.wait_for_accept` because the response can be confirmed only after the transaction is mined.
 
 Alternatively, the client can also use trader feed to listen to all the updates. This is faster when done with ConfirmationMode.head
 
-## Atomic in cancel_orders
+## Atomic in cancel_limit_orders
 
-The `cancel_orders` method can be called in 2 modes - atomic or non-atomic. In atomic mode, all the orders will be cancelled only if all the orders are successfully cancelled. In non-atomic mode, the orders will be cancelled one by one and the response will be a list of dicts with order ids and success boolean.
+The `cancel_limit_orders` method can be called in 2 modes - atomic or non-atomic. In atomic mode, all the orders will be cancelled only if all the orders are successfully cancelled. In non-atomic mode, the orders will be cancelled one by one and the response will be a list of dicts with order ids and success boolean.
 When used in combination with `wait_for_response=True`, the response will be a list of dicts with order ids and success boolean.

@@ -1,3 +1,4 @@
+import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Coroutine, Dict, List
@@ -10,7 +11,7 @@ from hubble_exchange.utils import float_to_scaled_int, get_new_salt
 
 
 @dataclass
-class Order:
+class LimitOrder:
     id: HexBytes
     amm_index: int
     trader: Address
@@ -43,6 +44,46 @@ class Order:
             price=float_to_scaled_int(price, 6),
             salt=get_new_salt(),
             reduce_only=reduce_only)
+
+
+@dataclass
+class IOCOrder:
+    id: HexBytes
+    amm_index: int
+    trader: Address
+    base_asset_quantity: int
+    price: int
+    salt: int
+    reduce_only: bool
+    expire_at: int
+
+    def to_dict(self):
+        return {
+            "ammIndex": self.amm_index,
+            "trader": self.trader,
+            "baseAssetQuantity": self.base_asset_quantity,
+            "price": self.price,
+            "salt": self.salt,
+            "reduceOnly": self.reduce_only,
+            "expireAt": self.expire_at,
+            "orderType": 1,  # hardcoded type = 1 for ioc orders
+        }
+
+    @classmethod
+    def new(cls, amm_index: int, base_asset_quantity: float, price: float, reduce_only: bool, expiry_duration: int):
+        """
+        Create a new order with a random salt and no ID or trader. This can be used for placing
+        multiple orders at once.
+        """
+        return cls(
+            id=None, # type: ignore
+            amm_index=amm_index,
+            trader=None, # type: ignore
+            base_asset_quantity=float_to_scaled_int(base_asset_quantity, 18),
+            price=float_to_scaled_int(price, 6),
+            salt=get_new_salt(),
+            reduce_only=reduce_only,
+            expire_at=int(time.time()) + expiry_duration)
 
 
 @dataclass
@@ -126,6 +167,32 @@ class OrderBookDepthUpdateResponse:
 
 
 @dataclass
+class OpenOrder:
+    Market: int
+    Price: str
+    Size: str
+    FilledSize: str
+    Timestamp: int
+    Salt: str
+    OrderId: str
+    ReduceOnly: bool
+    OrderType: str
+
+
+@dataclass
+class Trade:
+    BlockNumber: int
+    TransactionHash: HexBytes
+    Market: int
+    Timestamp: int
+    TradedAmount: float
+    Price: float
+    RealizedPnl: float
+    OpenNotional: float
+    ExecutionMode: str
+
+
+@dataclass
 class TraderFeedUpdate:
     Trader: Address
     OrderId: HexBytes
@@ -137,6 +204,7 @@ class TraderFeedUpdate:
     BlockStatus: str
     Timestamp: int
     TransactionHash: HexBytes
+
 
 @dataclass
 class MarketFeedUpdate:
@@ -165,7 +233,7 @@ class AsyncOrderStatusCallback(Protocol):
 
 
 class AsyncPlaceOrdersCallback(Protocol):
-    def __call__(self, response: List[Order]) -> Coroutine[Any, Any, Any]: ...
+    def __call__(self, response: List[Any]) -> Coroutine[Any, Any, Any]: ...
 
 
 class AsyncSubscribeToOrderBookDepthCallback(Protocol):

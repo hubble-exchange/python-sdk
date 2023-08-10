@@ -1,7 +1,7 @@
 
 import asyncio
 import os
-from typing import Awaitable, Callable, Dict
+from typing import Awaitable, Callable, Dict, List, Optional
 
 from eth_typing import Address
 from hexbytes import HexBytes
@@ -10,17 +10,19 @@ from web3.eth.async_eth import AsyncEth
 from web3.exceptions import TimeExhausted
 from web3.main import Web3, get_async_default_modules
 from web3.method import Method, default_root_munger
-from web3.middleware import async_geth_poa_middleware, geth_poa_middleware, construct_simple_cache_middleware
+from web3.middleware import (async_geth_poa_middleware,
+                             construct_simple_cache_middleware,
+                             geth_poa_middleware)
 from web3.middleware.async_cache import _async_simple_cache_middleware
-from web3.types import RPCEndpoint, _Hash32
+from web3.types import RPCEndpoint, TxParams, Wei, _Hash32
 
 from hubble_exchange.errors import OrderNotFound, TraderNotFound
-from hubble_exchange.models import (GetPositionsResponse,
+from hubble_exchange.models import (GetPositionsResponse, OpenOrder,
                                     OrderBookDepthResponse,
                                     OrderStatusResponse)
 
-rpc_endpoint = ""
-websocket_endpoint = ""
+sync_web3_client = None
+async_web3_client = None
 
 
 class HubblenetEth(AsyncEth):
@@ -28,6 +30,7 @@ class HubblenetEth(AsyncEth):
     _get_order_status: Method[Callable[[_Hash32], Awaitable[Dict]]] = Method(RPCEndpoint("trading_getOrderStatus"), mungers=[default_root_munger])
     _get_margin_and_positions: Method[Callable[[Address], Awaitable[Dict]]] = Method(RPCEndpoint("trading_getMarginAndPositions"), mungers=[default_root_munger])
     _get_order_book_depth: Method[Callable[[int], Awaitable[Dict]]] = Method(RPCEndpoint("trading_getTradingOrderBookDepth"), mungers=[default_root_munger])
+    _get_open_orders: Method[Callable[[Address, str], Awaitable[Dict]]] = Method(RPCEndpoint("orderbook_getOpenOrders"), mungers=[default_root_munger])
 
     async def get_order_status(self, order_id: _Hash32) -> OrderStatusResponse:
         try:
@@ -52,6 +55,18 @@ class HubblenetEth(AsyncEth):
     async def get_order_book_depth(self, market: int) -> OrderBookDepthResponse:
         response = await self._get_order_book_depth(market)
         return OrderBookDepthResponse(**response)
+
+    async def get_open_orders(self, trader:Address, market: int=None) -> List[OpenOrder]:
+        if market is None:
+            market_str = ""
+        else:
+            market_str = str(market)
+
+        open_orders = []    
+        response = await self._get_open_orders(trader, market_str)
+        for order in response["Orders"]:
+            open_orders.append(OpenOrder(**order))
+        return open_orders
 
     async def wait_for_transaction_status(self, transaction_hash: HexBytes, timeout: float = 120, poll_latency: float = 0.1) -> Dict:
         async def _wait_for_status_with_timeout(
@@ -92,49 +107,53 @@ def get_web3_modules() -> Dict:
 
 
 def get_async_web3_client() -> HubblenetWeb3:
-    rpc_endpoint = get_rpc_endpoint()
+    global async_web3_client
+    if not async_web3_client:
+        rpc_endpoint = get_rpc_endpoint()
 
-    web3_client = HubblenetWeb3(AsyncHTTPProvider(rpc_endpoint), modules=get_web3_modules())
-    web3_client.middleware_onion.inject(async_geth_poa_middleware, layer=0)
+        async_web3_client = HubblenetWeb3(AsyncHTTPProvider(rpc_endpoint), modules=get_web3_modules())
+        async_web3_client.middleware_onion.inject(async_geth_poa_middleware, layer=0)
 
-    # cache frequent eth_chainId calls
-    web3_client.middleware_onion.add(_async_simple_cache_middleware, name="cache")
-    return web3_client
+        # cache frequent eth_chainId calls
+        async_web3_client.middleware_onion.add(_async_simple_cache_middleware, name="cache")
+
+        # async_web3_client.eth.set_gas_price_strategy(rpc_gas_price_strategy)
+
+    return async_web3_client
 
 
 def get_sync_web3_client() -> Web3:
-    rpc_endpoint = get_rpc_endpoint()
+    global sync_web3_client
+    if not sync_web3_client:
+        rpc_endpoint = get_rpc_endpoint()
 
-    web3_client = Web3(HTTPProvider(rpc_endpoint))
-    web3_client.middleware_onion.inject(geth_poa_middleware, layer=0)
+        sync_web3_client = Web3(HTTPProvider(rpc_endpoint))
+        sync_web3_client.middleware_onion.inject(geth_poa_middleware, layer=0)
 
-    web3_client.middleware_onion.add(construct_simple_cache_middleware(), name="cache")
-    return web3_client
+        sync_web3_client.middleware_onion.add(construct_simple_cache_middleware(), name="cache")
+
+    return sync_web3_client
 
 
 def get_rpc_endpoint() -> str:
-    global rpc_endpoint
-    if not rpc_endpoint:
-        rpc_host = os.getenv("HUBBLE_RPC_HOST")
-        if not rpc_host:
-            raise ValueError("HUBBLE_RPC_HOST environment variable not set")
-        blockchain_id = os.getenv("HUBBLE_BLOCKCHAIN_ID")
-        if not blockchain_id:
-            raise ValueError("HUBBLE_BLOCKCHAIN_ID environment variable not set")
-        path = f"/ext/bc/{blockchain_id}/rpc"
-        rpc_endpoint = f"https://{rpc_host}{path}"
+    rpc_host = os.getenv("HUBBLE_RPC_HOST")
+    if not rpc_host:
+        raise ValueError("HUBBLE_RPC_HOST environment variable not set")
+    blockchain_id = os.getenv("HUBBLE_BLOCKCHAIN_ID")
+    if not blockchain_id:
+        raise ValueError("HUBBLE_BLOCKCHAIN_ID environment variable not set")
+    path = f"/ext/bc/{blockchain_id}/rpc"
+    rpc_endpoint = f"https://{rpc_host}{path}"
     return rpc_endpoint
 
 
 def get_websocket_endpoint() -> str:
-    global websocket_endpoint
-    if not websocket_endpoint:
-        rpc_host = os.getenv("HUBBLE_RPC_HOST")
-        if not rpc_host:
-            raise ValueError("HUBBLE_RPC_HOST environment variable not set")
-        blockchain_id = os.getenv("HUBBLE_BLOCKCHAIN_ID")
-        if not blockchain_id:
-            raise ValueError("HUBBLE_BLOCKCHAIN_ID environment variable not set")
-        path = f"/ext/bc/{blockchain_id}/ws"
-        websocket_endpoint = f"wss://{rpc_host}{path}"
+    rpc_host = os.getenv("HUBBLE_RPC_HOST")
+    if not rpc_host:
+        raise ValueError("HUBBLE_RPC_HOST environment variable not set")
+    blockchain_id = os.getenv("HUBBLE_BLOCKCHAIN_ID")
+    if not blockchain_id:
+        raise ValueError("HUBBLE_BLOCKCHAIN_ID environment variable not set")
+    path = f"/ext/bc/{blockchain_id}/ws"
+    websocket_endpoint = f"wss://{rpc_host}{path}"
     return websocket_endpoint
