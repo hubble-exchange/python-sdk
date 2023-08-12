@@ -245,7 +245,7 @@ class HubbleClient:
                 reduce_only=response.reduceOnly,
             )
         order = await self.get_order_status(order_id, order_status_callback)
-        return await self.cancel_limit_orders([order], wait_for_response, callback, tx_options, mode)
+        return await self.cancel_limit_orders([order], True, wait_for_response, callback, tx_options, mode)
 
     async def get_order_fills(self, order_id: str) -> List[Dict]:
         return await self.order_book_client.get_order_fills(order_id)
