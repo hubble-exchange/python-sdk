@@ -197,6 +197,9 @@ class OrderBookClient(object):
         event = getattr(contract.events, event_name)
         return event().process_receipt(receipt, DISCARD)
 
+    async def get_current_nonce(self) -> int:
+        return await self.web3_client.eth.get_transaction_count(self.public_address)
+
     async def _get_nonce(self) -> int:
         if self.nonce is None:
             self.nonce = await self.web3_client.eth.get_transaction_count(self.public_address)

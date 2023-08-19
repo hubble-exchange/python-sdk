@@ -246,6 +246,18 @@ await client.get_trades(3, 1691669740, 1691583340, callback)
 - ExecutionMode: execution mode - "maker" or "taker"
 
 
+## Get nonce
+
+An account nonce is a transaction counter in each account, which is used to prevent replay attacks. Nonce should be increased by 1 in every transaction. The function `get_nonce` fetches the number of transactions sent by the address from the blockchain.
+
+Nonce can be fetched once using `get_nonce` and be incremented in every subsequent transaction. However, if the same address is sending multiple transactions in parallel, it is recommended to use `get_nonce` before every transaction.
+
+```python
+nonce = await client.get_nonce()
+# use this nonce in the next transaction like this
+await client.place_limit_orders(orders, True, callback, {"nonce": nonce})
+```
+
 ## Custom transaction options
 
 The following options can be passed to the client to override the default

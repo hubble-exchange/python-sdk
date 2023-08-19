@@ -36,6 +36,9 @@ class HubbleClient:
     def set_transaction_mode(self, mode: TransactionMode):
         self.order_book_client.set_transaction_mode(mode)
 
+    async def get_nonce(self):
+        return await self.order_book_client.get_current_nonce()
+
     async def get_markets(self):
         return await self.order_book_client.get_markets()
 
