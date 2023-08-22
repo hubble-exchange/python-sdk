@@ -238,6 +238,7 @@ class OrderStatus(Enum):
     Placed = 1
     Filled = 2
     Cancelled = 3
+    PartiallyFilled = 4  # this status is for sdk only; not present in contract
 
 
 class AsyncOrderBookDepthCallback(Protocol):

@@ -202,6 +202,24 @@ async def main():
 Removed events are emmitted during chain reorgs, and are most likely to be temporary. They are only emmitted when subscribing to head block events. If removed=True, the client might need to do a reverse operation for the given event.
 
 
+## Get limit order status
+
+Get the status of a limit order. It can be used to get the status of any order, even if it is not placed using the sdk.
+
+```python
+order_status = await client.get_limit_order_status(order.id, callback)
+```
+
+### Status Description
+
+```
+Invalid = order does not exist
+Placed = order is unfilled
+PartiallyFilled = order is partially filled
+Filled = order is completely filled
+Cancelled = cancelled
+```
+
 ## Open orders
 
 Returns all open orders of the trader. It can be filtered by market id.

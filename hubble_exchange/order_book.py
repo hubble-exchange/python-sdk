@@ -68,6 +68,9 @@ class OrderBookClient(object):
     async def get_limit_order_status(self, order_id: HexBytes):
         response = await self.order_book_contract.functions.orderStatus(order_id).call()
         status = response[3]
+        filled_amount = response[1]
+        if status == OrderStatus.Placed.value and filled_amount > 0:
+            status = OrderStatus.PartiallyFilled.value
         return OrderStatus(status).name
 
     async def place_limit_orders(self, orders: List[LimitOrder], custom_tx_options=None, mode=None):
