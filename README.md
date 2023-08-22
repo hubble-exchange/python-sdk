@@ -50,8 +50,11 @@ async def main():
     # placed_orders list will contain the order ids for the orders placed
     placed_orders = await client.place_ioc_orders(ioc_orders, True, callback)
 
-    # get order status - only works for limit orders because ioc orders are ephemeral
-    order_status = await client.get_order_status(order.id, callback)
+    # get limit order details - only works for open limit orders
+    order_details = await client.get_limit_order_details(order.id, callback)
+
+    # get status for limit orders - works for all order statuses
+    order_status = await client.get_limit_order_status(order.id, callback)
     
     # cancel an order
     await client.cancel_limit_orders([order], True, True, callback)

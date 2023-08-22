@@ -220,6 +220,26 @@ class MarketFeedUpdate:
     TransactionHash: HexBytes
 
 
+class TransactionMode(Enum):
+    no_wait = 0
+    wait_for_head = 1
+    wait_for_accept = 2
+
+
+class ExecutionMode(Enum):
+    Taker = 0
+    Maker = 1
+    SameBlock = 2  # not used
+    Liquidation = 3
+
+
+class OrderStatus(Enum):
+    Invalid = 0
+    Placed = 1
+    Filled = 2
+    Cancelled = 3
+
+
 class AsyncOrderBookDepthCallback(Protocol):
     def __call__(self, response: OrderBookDepthResponse) -> Coroutine[Any, Any, Any]: ...
 

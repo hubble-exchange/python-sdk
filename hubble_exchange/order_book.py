@@ -1,6 +1,5 @@
 import json
 import os
-from enum import Enum
 from typing import Any, Dict, List
 
 from eth_typing import Address
@@ -13,7 +12,7 @@ from hubble_exchange.constants import (CHAIN_ID, GAS_PER_ORDER, MAX_GAS_LIMIT,
                                        IOCBookContractAddress,
                                        OrderBookContractAddress)
 from hubble_exchange.eth import get_async_web3_client, get_sync_web3_client
-from hubble_exchange.models import IOCOrder, LimitOrder, Trade
+from hubble_exchange.models import ExecutionMode, IOCOrder, LimitOrder, OrderStatus, Trade, TransactionMode
 from hubble_exchange.utils import (get_address_from_private_key,
                                    int_to_scaled_float)
 
@@ -34,19 +33,6 @@ with open(f"{HERE}/contract_abis/ClearingHouse.json", 'r') as abi_file:
 with open(f"{HERE}/contract_abis/AMM.json", 'r') as abi_file:
     abi_str = abi_file.read()
     AMM_ABI = json.loads(abi_str)
-
-
-class TransactionMode(Enum):
-    no_wait = 0
-    wait_for_head = 1
-    wait_for_accept = 2
-
-
-class ExecutionMode(Enum):
-    Taker = 0
-    Maker = 1
-    SameBlock = 2  # not used
-    Liquidation = 3
 
 
 class OrderBookClient(object):
@@ -78,6 +64,11 @@ class OrderBookClient(object):
             markets[i] = name
 
         return markets
+
+    async def get_limit_order_status(self, order_id: HexBytes):
+        response = await self.order_book_contract.functions.orderStatus(order_id).call()
+        status = response[3]
+        return OrderStatus(status).name
 
     async def place_limit_orders(self, orders: List[LimitOrder], custom_tx_options=None, mode=None):
         """

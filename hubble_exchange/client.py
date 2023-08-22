@@ -50,8 +50,13 @@ class HubbleClient:
         response = await self.web3_client.eth.get_margin_and_positions(self.trader_address)
         return await callback(response)
 
-    async def get_order_status(self, order_id: HexBytes, callback: AsyncOrderStatusCallback):
-        response = await self.web3_client.eth.get_order_status(order_id.hex()) # type: ignore
+    async def get_limit_order_details(self, order_id: HexBytes, callback: AsyncOrderStatusCallback):
+        """ Works only for open orders """
+        response = await self.web3_client.eth.get_order_status(order_id.hex())
+        return await callback(response)
+
+    async def get_limit_order_status(self, order_id: HexBytes, callback):
+        response = await self.order_book_client.get_limit_order_status(order_id)
         return await callback(response)
 
     async def get_open_orders(self, market_id: int, callback: AsyncOrderStatusCallback):
@@ -247,7 +252,7 @@ class HubbleClient:
                 salt=int(response.salt),
                 reduce_only=response.reduceOnly,
             )
-        order = await self.get_order_status(order_id, order_status_callback)
+        order = await self.get_limit_order_details(order_id, order_status_callback)
         return await self.cancel_limit_orders([order], True, wait_for_response, callback, tx_options, mode)
 
     async def get_order_fills(self, order_id: str) -> List[Dict]:
