@@ -6,4 +6,5 @@ ClearingHouseContractAddress = Address("0x03000000000000000000000000000000000000
 
 CHAIN_ID = 321123
 MAX_GAS_LIMIT = 7_000_000  # 7 million
-GAS_PER_ORDER = 200_000  # 200k
+# TODO: change this as per hubblenext gas limit
+GAS_PER_ORDER = 500_000  # 200k

@@ -38,8 +38,8 @@ async def main():
 
     # place limit orders
     limit_orders = []
-    limit_orders.append(LimitOrder.new(3, 1, 1.2, False)) # market = 3, qty = 1, price = 1.2, reduce_only = False
-    limit_orders.append(LimitOrder.new(0, 0.1, 1800, False)) # market = 0, qty = 0.1, price = 1800, reduce_only = False
+    limit_orders.append(LimitOrder.new(3, 1, 1.2, False, False)) # market = 3, qty = 1, price = 1.2, reduce_only = False, post_only = False
+    limit_orders.append(LimitOrder.new(0, 0.1, 1800, False, True)) # market = 0, qty = 0.1, price = 1800, reduce_only = False, post_only = True
     # placed_orders list will contain the order ids for the orders placed
     placed_orders = await client.place_limit_orders(limit_orders, True, callback)
 
@@ -113,6 +113,7 @@ async def main():
 - origQty: total order quantity
 - price: order price
 - reduceOnly: whether the order is reduce-only or not
+- postOnly: whether the order is post-only or not
 - positionSide: (LONG|SHORT)
 - status: order status (NEW|FILLED|CANCELED|REJECTED|PARTIALLY_FILLED)
 - symbol: market id
@@ -162,12 +163,20 @@ async def main():
 - OrderId: order id
 - OrderType: order type - "limit" order or "ioc" (market order)
 - Removed: whether the event is being removed or not
-- EventName: name of the contract event (OrderPlaced|OrderMatched|OrderCancelled)
-- Args: args is a dynamic field and it contains information about the event. OrderPlaced event contains order object, OrderMatched event contains fillAmount and price
+- EventName: name of the contract event (OrderPlaced|OrderAccepted|OrderRejected|OrderMatched|OrderCancelAccepted|OrderCancelRejected)
+- Args: args is a dynamic field and it contains information about the event. For example, OrderPlaced event contains order object, OrderMatched event contains fillAmount and price
 - BlockNumber: block number in which the transaction was included
 - BlockStatus: (head|accepted) whether the block is accepted or only a preferred block(head block)
 - Timestamp: timestamp of the block in unix format
 - TransactionHash: transaction hash
+
+#### EventName description
+- OrderPlaced - Order was successfully placed(only for IOC orders)
+- OrderAccepted - Order was successfully placed(only for Limit orders)
+- OrderRejected - Order was rejected(only for Limit orders)
+- OrderMatched - Order was matched
+- OrderCancelAccepted - Order was successfully cancelled(only for Limit orders)
+- OrderCancelRejected - Order cancel was rejected(only for Limit orders)
 
 Removed events are emmitted during chain reorgs, and are most likely to be temporary. They are only emmitted when subscribing to head block events. If removed=True, the client might need to do a reverse operation for the given event. For example if an OrderMatched event is received with removed=True, the client should add the fillAmount back to unfilled quantity of the order.
 
@@ -241,6 +250,7 @@ open_orders = await client.get_open_orders(0, callback)
 - Salt: order salt
 - OrderId: order id
 - ReduceOnly: whether the order is reduce-only or not
+- PostOnly: whether the order is post-only or not
 - OrderType: order type - "limit" order or "ioc" (market order)
 
 

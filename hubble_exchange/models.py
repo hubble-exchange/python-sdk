@@ -6,6 +6,7 @@ from typing import Any, Coroutine, Dict, List
 from eth_typing import Address
 from hexbytes import HexBytes
 from typing_extensions import Protocol
+from web3 import Web3
 
 from hubble_exchange.utils import float_to_scaled_int, get_new_salt
 
@@ -19,19 +20,21 @@ class LimitOrder:
     price: int
     salt: int
     reduce_only: bool
+    post_only: bool
 
     def to_dict(self):
         return {
             "ammIndex": self.amm_index,
-            "trader": self.trader,
+            "trader": Web3.to_checksum_address(self.trader),
             "baseAssetQuantity": self.base_asset_quantity,
             "price": self.price,
             "salt": self.salt,
             "reduceOnly": self.reduce_only,
+            "postOnly": self.post_only,
         }
 
     @classmethod
-    def new(cls, amm_index: int, base_asset_quantity: float, price: float, reduce_only: bool):
+    def new(cls, amm_index: int, base_asset_quantity: float, price: float, reduce_only: bool, post_only: bool):
         """
         Create a new order with a random salt and no ID or trader. This can be used for placing
         multiple orders at once.
@@ -43,7 +46,30 @@ class LimitOrder:
             base_asset_quantity=float_to_scaled_int(base_asset_quantity, 18),
             price=float_to_scaled_int(price, 6),
             salt=get_new_salt(),
-            reduce_only=reduce_only)
+            reduce_only=reduce_only,
+            post_only=post_only)
+
+    def get_order_hash(self):
+        """
+        Implements the same logic as the contract's getOrderHashV2 function  - keccak256(abi.encode(order))
+        It's converting each field to bytes and then concatenating them together instead of using Web3.solidity_keccak function
+        because it was giving incorrect results.
+        One important part is to pad all the fields to 32 bytes
+        """
+
+        def int_to_bytes(value: int):
+            return value.to_bytes(32, 'big', signed=True)
+
+        packed_data = (
+            int_to_bytes(self.amm_index) +
+            Web3.to_bytes(hexstr=self.trader).rjust(32, b'\0') +
+            int_to_bytes(self.base_asset_quantity) +
+            int_to_bytes(self.price) +
+            int_to_bytes(self.salt) +
+            (b'\x01' if self.reduce_only else b'\x00').rjust(32, b'\0') +
+            (b'\x01' if self.post_only else b'\x00').rjust(32, b'\0')
+        )
+        return Web3.keccak(packed_data)
 
 
 @dataclass
@@ -93,6 +119,7 @@ class OrderStatusResponse:
     origQty: str
     price: str
     reduceOnly: bool
+    postOnly: bool
     positionSide: str
     status: str
     symbol: int
@@ -176,6 +203,7 @@ class OpenOrder:
     Salt: str
     OrderId: str
     ReduceOnly: bool
+    PostOnly: bool
     OrderType: str
 
 

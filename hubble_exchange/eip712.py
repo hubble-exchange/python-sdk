@@ -32,6 +32,7 @@ class LimitOrder(EIP712Struct):
     price = Uint(256)
     salt = Uint(256)
     reduceOnly = Boolean()
+    postOnly = Boolean()
 
 
 class IOCOrder(EIP712Struct):
@@ -48,6 +49,9 @@ class IOCOrder(EIP712Struct):
 
 
 def get_limit_order_hash(order: LimitOrderModel) -> HexBytes:
+    """
+    INCORRECT: use order.get_order_hash() instead
+    """
     order_struct = LimitOrder(
         ammIndex=order.amm_index,
         trader=order.trader,
@@ -55,6 +59,7 @@ def get_limit_order_hash(order: LimitOrderModel) -> HexBytes:
         price=order.price,
         salt=order.salt,
         reduceOnly=order.reduce_only,
+        postOnly=order.post_only,
     )
 
     order_struct_hash = HexBytes(order_struct.hash_struct())

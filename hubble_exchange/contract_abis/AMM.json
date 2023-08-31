@@ -11,6 +11,80 @@
     "type": "constructor"
   },
   {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "asks",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "nextTick",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "asksHead",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "bids",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "nextTick",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "bidsHead",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "clearingHouse",
     "outputs": [
@@ -57,19 +131,6 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getMarkPriceTwap",
-    "outputs": [
-      {
-        "internalType": "int256",
-        "name": "",
-        "type": "int256"
       }
     ],
     "stateMutability": "view",
@@ -286,6 +347,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "impactMarginNotional",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "string",
@@ -320,7 +394,46 @@
   },
   {
     "inputs": [],
+    "name": "interestRate",
+    "outputs": [
+      {
+        "internalType": "int256",
+        "name": "",
+        "type": "int256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "juror",
+    "outputs": [
+      {
+        "internalType": "contract IJuror",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "lastPrice",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "lastTradePrice",
     "outputs": [
       {
         "internalType": "uint256",
@@ -588,6 +701,47 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "orderBook",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "piData",
+    "outputs": [
+      {
+        "internalType": "int256",
+        "name": "piTwap",
+        "type": "int256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "accTime",
+        "type": "uint256"
+      },
+      {
+        "internalType": "int256",
+        "name": "piLast",
+        "type": "int256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "lastTS",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -648,6 +802,13 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "samplePI",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -684,6 +845,45 @@
       }
     ],
     "name": "setGovernace",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_impactMarginNotional",
+        "type": "uint256"
+      }
+    ],
+    "name": "setImpactMarginNotional",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "int256",
+        "name": "_interestRate",
+        "type": "int256"
+      }
+    ],
+    "name": "setInterestRate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_juror",
+        "type": "address"
+      }
+    ],
+    "name": "setJuror",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -733,6 +933,19 @@
       }
     ],
     "name": "setOracleConfig",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_orderBook",
+        "type": "address"
+      }
+    ],
+    "name": "setOrderBook",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -810,6 +1023,42 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tick",
+        "type": "uint256"
+      },
+      {
+        "internalType": "int256",
+        "name": "quantity",
+        "type": "int256"
+      }
+    ],
+    "name": "signalAddLiquidity",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tick",
+        "type": "uint256"
+      },
+      {
+        "internalType": "int256",
+        "name": "quantity",
+        "type": "int256"
+      }
+    ],
+    "name": "signalRemoveLiquidity",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "spotPriceTwapInterval",
     "outputs": [
@@ -858,6 +1107,11 @@
     ],
     "name": "updatePosition",
     "outputs": [
+      {
+        "internalType": "bool",
+        "name": "isUpdated",
+        "type": "bool"
+      },
       {
         "internalType": "int256",
         "name": "fundingPayment",

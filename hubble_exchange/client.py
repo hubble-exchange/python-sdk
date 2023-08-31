@@ -4,7 +4,7 @@ from typing import Dict, List
 import websockets
 from hexbytes import HexBytes
 
-from hubble_exchange.eip712 import get_ioc_order_hash, get_limit_order_hash
+from hubble_exchange.eip712 import get_ioc_order_hash
 from hubble_exchange.eth import get_async_web3_client, get_websocket_endpoint
 from hubble_exchange.models import (AsyncOrderBookDepthCallback,
                                     AsyncOrderStatusCallback,
@@ -17,7 +17,7 @@ from hubble_exchange.models import (AsyncOrderBookDepthCallback,
                                     OrderStatusResponse, TraderFeedUpdate,
                                     WebsocketResponse)
 from hubble_exchange.order_book import OrderBookClient, TransactionMode
-from hubble_exchange.utils import (float_to_scaled_int,
+from hubble_exchange.utils import (add_0x_prefix, float_to_scaled_int,
                                    get_address_from_private_key, get_new_salt)
 
 
@@ -51,7 +51,7 @@ class HubbleClient:
         return await callback(response)
 
     async def get_limit_order_details(self, order_id: HexBytes, callback: AsyncOrderStatusCallback):
-        """ Works only for open orders """
+        """ Works only for open limit orders """
         response = await self.web3_client.eth.get_order_status(order_id.hex())
         return await callback(response)
 
@@ -83,6 +83,8 @@ class HubbleClient:
                 raise ValueError("Order price is not set")
             if order.reduce_only is None:
                 raise ValueError("Order reduce only is not set")
+            if order.post_only is None:
+                raise ValueError("Order post only is not set")
 
             # trader and salt can be set automatically
             if order.trader in [None, "0x", ""]:
@@ -92,9 +94,9 @@ class HubbleClient:
 
         order_ids = set()  # stores all the order ids
         for order in orders:
-            order_hash = get_limit_order_hash(order)
+            order_hash = order.get_order_hash()
             order.id = order_hash
-            order_ids.add(order_hash.hex())  # add each order id to the set
+            order_ids.add(order_hash)  # add each order id to the set
 
         # if the response if requested then we'll have to wait for the transaction to be mined
         # This is because the receipt is generated only after the transaction is mined(accepted)
@@ -105,23 +107,34 @@ class HubbleClient:
         if wait_for_response:
             receipt = await self.web3_client.eth.get_transaction_receipt(tx_hash)
 
-            events = self.order_book_client.get_events_from_receipt(receipt, "OrderPlaced")
             event_order_ids = set()  # stores order ids present in events
             response = []
-            for event in events:
+            accepted_events = self.order_book_client.get_events_from_receipt(receipt, "OrderAccepted")
+            for event in accepted_events:
                 order_id = event.args.orderHash
-                event_order_ids.add('0x' + order_id.hex())
+                event_order_ids.add(add_0x_prefix(order_id.hex()))
                 response.append({
-                    "order_id": '0x' + order_id.hex(),
+                    "order_id": add_0x_prefix(order_id.hex()),
                     "success": True
                 })
 
-            missing_order_ids = order_ids - event_order_ids  # order ids not present in events
+            rejected_events = self.order_book_client.get_events_from_receipt(receipt, "OrderRejected")
+            for event in rejected_events:
+                order_id = event.args.orderHash
+                event_order_ids.add(add_0x_prefix(order_id.hex()))
+                response.append({
+                    "order_id": add_0x_prefix(order_id.hex()),
+                    "success": False,
+                    "error": event.args.err
+                })
 
+            # check for missing order ids; should never happen
+            missing_order_ids = order_ids - event_order_ids
             for missing_id in missing_order_ids:
                 response.append({
                     "order_id": missing_id,
-                    "success": False
+                    "success": False,
+                    "error": "Unknown error"
                 })
 
             return await callback(response)
@@ -154,7 +167,7 @@ class HubbleClient:
         for order in orders:
             order_hash = get_ioc_order_hash(order)
             order.id = order_hash
-            order_ids.add(order_hash.hex())  # add each order id to the set
+            order_ids.add(order_hash)  # add each order id to the set
 
         # if the response if requested then we'll have to wait for the transaction to be mined
         # This is because the receipt is generated only after the transaction is mined(accepted)
@@ -170,9 +183,9 @@ class HubbleClient:
             response = []
             for event in events:
                 order_id = event.args.orderHash
-                event_order_ids.add('0x' + order_id.hex())
+                event_order_ids.add(add_0x_prefix(order_id.hex()))
                 response.append({
-                    "order_id": '0x' + order_id.hex(),
+                    "order_id": add_0x_prefix(order_id.hex()),
                     "success": True
                 })
 
@@ -202,9 +215,9 @@ class HubbleClient:
 
         order_ids = set()  # stores all the order ids
         for order in orders:
-            order_hash = get_limit_order_hash(order)
+            order_hash = order.get_order_hash()
             order.id = order_hash
-            order_ids.add(order_hash.hex())  # add each order id to the set
+            order_ids.add(order_hash)  # add each order id to the set
 
         tx_hash = await self.order_book_client.cancel_orders(orders, atomic, tx_options, mode)
 
@@ -213,27 +226,28 @@ class HubbleClient:
 
             response = []
             event_order_ids = set()
-            cancelled_events = self.order_book_client.get_events_from_receipt(receipt, "OrderCancelled")
+            cancelled_events = self.order_book_client.get_events_from_receipt(receipt, "OrderCancelAccepted")
             for event in cancelled_events:
-                event_order_ids.add('0x' + event.args.orderHash.hex())
+                event_order_ids.add(add_0x_prefix(event.args.orderHash.hex()))
                 response.append({
-                    "order_id": '0x' + event.args.orderHash.hex(),
+                    "order_id": add_0x_prefix(event.args.orderHash.hex()),
                     "success": True
                 })
-            skipped_events = self.order_book_client.get_events_from_receipt(receipt, "SkippedCancelOrder")
-            for event in skipped_events:
-                event_order_ids.add('0x' + event.args.orderHash.hex())
+            rejected_events = self.order_book_client.get_events_from_receipt(receipt, "OrderCancelRejected")
+            for event in rejected_events:
+                event_order_ids.add(add_0x_prefix(event.args.orderHash.hex()))
                 response.append({
-                    "order_id": '0x' + event.args.orderHash.hex(),
+                    "order_id": add_0x_prefix(event.args.orderHash.hex()),
                     "success": False,
+                    "error": event.args.err
                 })
 
             missing_order_ids = order_ids - event_order_ids  # order ids not present in events
-
             for missing_id in missing_order_ids:
                 response.append({
                     "order_id": missing_id,
-                    "success": False
+                    "success": False,
+                    "error": "Unknown error"
                 })
 
             return await callback(response)
@@ -251,6 +265,7 @@ class HubbleClient:
                 price=float_to_scaled_int(float(response.price), 6),
                 salt=int(response.salt),
                 reduce_only=response.reduceOnly,
+                post_only=response.postOnly,
             )
         order = await self.get_limit_order_details(order_id, order_status_callback)
         return await self.cancel_limit_orders([order], True, wait_for_response, callback, tx_options, mode)

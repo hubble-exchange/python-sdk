@@ -263,6 +263,19 @@
     "inputs": [
       {
         "indexed": false,
+        "internalType": "uint256",
+        "name": "nextSampleTime",
+        "type": "uint256"
+      }
+    ],
+    "name": "SamplePI",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
         "internalType": "address",
         "name": "account",
         "type": "address"
@@ -828,6 +841,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "nextSampleTime",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "components": [
@@ -978,6 +1004,13 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "samplePI",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
