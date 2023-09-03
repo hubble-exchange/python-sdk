@@ -101,7 +101,7 @@ class OrderBookClient(object):
         method = getattr(self.ioc_order_book_contract.functions, "placeOrders")
         return await self._send_orderbook_transaction(method, [place_order_payload], tx_options, mode)
 
-    async def cancel_orders(self, orders: list[LimitOrder], atomic, custom_tx_options=None, mode=None):
+    async def cancel_orders(self, orders: list[LimitOrder], custom_tx_options=None, mode=None):
         cancel_order_payload = []
         for order in orders:
             cancel_order_payload.append(order.to_dict())
@@ -109,10 +109,7 @@ class OrderBookClient(object):
         tx_options = {'gas': min(GAS_PER_ORDER * len(orders), MAX_GAS_LIMIT)}
         tx_options.update(custom_tx_options or {})
 
-        # TODO: check this
-        # method_name = "cancelOrdersAtomic" if atomic else "cancelOrders"
-        method_name = "cancelOrders"
-        method = getattr(self.order_book_contract.functions, method_name)
+        method = getattr(self.order_book_contract.functions, "cancelOrders")
         return await self._send_orderbook_transaction(method, [cancel_order_payload], tx_options, mode)
 
     async def get_order_fills(self, order_id: str) -> List[Dict]:

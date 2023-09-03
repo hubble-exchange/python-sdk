@@ -143,7 +143,7 @@ def get_rpc_endpoint() -> str:
     if not blockchain_id:
         raise ValueError("HUBBLE_BLOCKCHAIN_ID environment variable not set")
     path = f"/ext/bc/{blockchain_id}/rpc"
-    rpc_endpoint = f"http://{rpc_host}{path}"
+    rpc_endpoint = f"https://{rpc_host}{path}"
     return rpc_endpoint
 
 
@@ -155,5 +155,5 @@ def get_websocket_endpoint() -> str:
     if not blockchain_id:
         raise ValueError("HUBBLE_BLOCKCHAIN_ID environment variable not set")
     path = f"/ext/bc/{blockchain_id}/ws"
-    websocket_endpoint = f"ws://{rpc_host}{path}"
+    websocket_endpoint = f"wss://{rpc_host}{path}"
     return websocket_endpoint

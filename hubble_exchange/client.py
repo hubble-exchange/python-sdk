@@ -201,12 +201,9 @@ class HubbleClient:
         else:
             return await callback(orders)
 
-    async def cancel_limit_orders(self, orders: List[LimitOrder], atomic: bool, wait_for_response: bool, callback, tx_options = None, mode=None):
+    async def cancel_limit_orders(self, orders: List[LimitOrder], wait_for_response: bool, callback, tx_options = None, mode=None):
         if len(orders) > 100:
             raise ValueError("Cannot cancel more than 100 orders at once")
-
-        if atomic is None:
-            atomic = True  # default mode
 
         # if the response if requested then we'll have to wait for the transaction to be mined
         # This is because the receipt is generated only after the transaction is mined(accepted)
@@ -219,7 +216,7 @@ class HubbleClient:
             order.id = order_hash
             order_ids.add(order_hash)  # add each order id to the set
 
-        tx_hash = await self.order_book_client.cancel_orders(orders, atomic, tx_options, mode)
+        tx_hash = await self.order_book_client.cancel_orders(orders, tx_options, mode)
 
         if wait_for_response:
             receipt = await self.web3_client.eth.get_transaction_receipt(tx_hash)

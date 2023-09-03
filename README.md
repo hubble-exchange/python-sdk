@@ -57,7 +57,7 @@ async def main():
     order_status = await client.get_limit_order_status(order.id, callback)
     
     # cancel an order
-    await client.cancel_limit_orders([order], True, True, callback)
+    await client.cancel_limit_orders([order], True, callback)
 
     # order can also be cancelled by order id
     await client.cancel_order_by_id(order.id, True, callback)
@@ -345,8 +345,3 @@ To get the acknowledgement of the transaction, use `wait_for_response=True`. The
 When using `wait_for_response=True`, the sdk will automatically set the transaction mode to `TransactionMode.wait_for_accept` because the response can be confirmed only after the transaction is mined.
 
 Alternatively, the client can also use trader feed to listen to all the updates. This is faster when done with ConfirmationMode.head
-
-## Atomic in cancel_limit_orders
-
-The `cancel_limit_orders` method can be called in 2 modes - atomic or non-atomic. In atomic mode, all the orders will be cancelled only if all the orders are successfully cancelled. In non-atomic mode, the orders will be cancelled one by one and the response will be a list of dicts with order ids and success boolean.
-When used in combination with `wait_for_response=True`, the response will be a list of dicts with order ids and success boolean.
