@@ -345,3 +345,18 @@ To get the acknowledgement of the transaction, use `wait_for_response=True`. The
 When using `wait_for_response=True`, the sdk will automatically set the transaction mode to `TransactionMode.wait_for_accept` because the response can be confirmed only after the transaction is mined.
 
 Alternatively, the client can also use trader feed to listen to all the updates. This is faster when done with ConfirmationMode.head
+
+
+## Config
+
+- mininum_quantity: minimum quantity that can be placed in an order for a particular market. The quantity also has to be a multiple of this number.
+- price_precision: number of decimal places for price for a particular market.
+
+```python
+from hubble_exchange.constants import get_minimum_quantity, get_price_precision
+
+# get minimum quantity for market id 3
+min_qty = get_minimum_quantity(3)
+# get price precision for market id 3
+price_precision = get_price_precision(3)
+```

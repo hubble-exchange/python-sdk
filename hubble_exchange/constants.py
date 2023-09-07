@@ -1,9 +1,19 @@
-from eth_typing import Address
+# dynamically import config from the provided config module
+def init_config(config_module):
+    for attr_name in dir(config_module):
+        if not attr_name.startswith("_"):  # skip internal names
+            globals()[attr_name] = getattr(config_module, attr_name)
 
-OrderBookContractAddress = Address("0x0300000000000000000000000000000000000000")
-IOCBookContractAddress = Address("0x635c5F96989a4226953FE6361f12B96c5d50289b")
-ClearingHouseContractAddress = Address("0x0300000000000000000000000000000000000002")
 
-CHAIN_ID = 321123
-MAX_GAS_LIMIT = 7_000_000  # 7 million
-GAS_PER_ORDER = 300_000  # 300k
+def get_minimum_quantity(market: int) -> int:
+    try:
+        return min_quantity[market]
+    except KeyError:
+        raise ValueError(f"Market {market} does not exist")
+
+
+def get_price_precision(market: int) -> int:
+    try:
+        return price_precision[market]
+    except KeyError:
+        raise ValueError(f"Market {market} does not exist")

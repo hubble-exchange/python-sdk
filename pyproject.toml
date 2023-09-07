@@ -26,7 +26,7 @@ readme = "README.md"
 keywords = ["hubble", "exchange", "orderbook", "perpetual", "futures", "dex", "sdk", "python", "avalanche", "ethereum", "web3", "crypto"]
 
 [tool.setuptools]
-packages = ["hubble_exchange", "hubble_exchange.contract_abis"]
+packages = ["hubble_exchange", "hubble_exchange.contract_abis", "hubble_exchange.config"]
 include-package-data = true
 
 [project.urls]

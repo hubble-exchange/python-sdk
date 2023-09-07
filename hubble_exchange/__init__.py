@@ -1,3 +1,11 @@
+import os
+from hubble_exchange.constants import init_config
+
+env = os.getenv("HUBBLE_ENV") or "hubblenext"
+config_module = __import__(f"hubble_exchange.config.{env}", fromlist=['*'])
+init_config(config_module)
+
+
 from hubble_exchange.client import HubbleClient
 from hubble_exchange.models import (ConfirmationMode, GetPositionsResponse,
                                     IOCOrder, LimitOrder,
