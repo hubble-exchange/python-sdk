@@ -5,7 +5,7 @@ def init_config(config_module):
             globals()[attr_name] = getattr(config_module, attr_name)
 
 
-def get_minimum_quantity(market: int) -> int:
+def get_minimum_quantity(market: int) -> float:
     try:
         return min_quantity[market]
     except KeyError:

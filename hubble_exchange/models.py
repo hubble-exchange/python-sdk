@@ -51,15 +51,11 @@ class LimitOrder:
 
     def get_order_hash(self):
         """
-        Implements the same logic as the contract's getOrderHashV2 function  - keccak256(abi.encode(order))
+        Implements the same logic as the contract's getOrderHash function  - keccak256(abi.encode(order))
         It's converting each field to bytes and then concatenating them together instead of using Web3.solidity_keccak function
         because it was giving incorrect results.
         One important part is to pad all the fields to 32 bytes
         """
-
-        def int_to_bytes(value: int):
-            return value.to_bytes(32, 'big', signed=True)
-
         packed_data = (
             int_to_bytes(self.amm_index) +
             Web3.to_bytes(hexstr=self.trader).rjust(32, b'\0') +
@@ -110,6 +106,26 @@ class IOCOrder:
             salt=get_new_salt(),
             reduce_only=reduce_only,
             expire_at=int(time.time()) + expiry_duration)
+
+    def get_order_hash(self):
+        """
+        Implements the same logic as the contract's getOrderHash function  - keccak256(abi.encode(order))
+        It's converting each field to bytes and then concatenating them together instead of using Web3.solidity_keccak function
+        because it was giving incorrect results.
+        One important part is to pad all the fields to 32 bytes
+        """
+        order_type = 1
+        packed_data = (
+            order_type.to_bytes(1, byteorder='big').rjust(32, b'\0') +  # uint8
+            int_to_bytes(self.expire_at) +  # uint256
+            int_to_bytes(self.amm_index) +  # uint256
+            Web3.to_bytes(hexstr=self.trader).rjust(32, b'\0') +  # address
+            int_to_bytes(self.base_asset_quantity) +  # int256
+            int_to_bytes(self.price) +  # uint256
+            int_to_bytes(self.salt) +  # uint256
+            (b'\x01' if self.reduce_only else b'\x00').rjust(32, b'\0')  # bool
+        )
+        return Web3.keccak(packed_data)
 
 
 @dataclass
@@ -292,3 +308,7 @@ class AsyncSubscribeToOrderBookDepthCallback(Protocol):
 class ConfirmationMode(Enum):
     head = "head"
     accepted = "accepted"
+
+
+def int_to_bytes(value: int):
+    return value.to_bytes(32, 'big', signed=True)

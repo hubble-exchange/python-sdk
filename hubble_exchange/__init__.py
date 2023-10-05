@@ -1,7 +1,7 @@
 import os
 from hubble_exchange.constants import init_config
 
-env = os.getenv("HUBBLE_ENV") or "hubblenext"
+env = os.getenv("HUBBLE_ENV") or "aylin"
 config_module = __import__(f"hubble_exchange.config.{env}", fromlist=['*'])
 init_config(config_module)
 

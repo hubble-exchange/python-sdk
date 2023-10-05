@@ -14,10 +14,11 @@ pip install hubble-exchange
 ## Example usage:
 
 All read/write functions are async
-<br>Requires HUBBLE_RPC_HOST and HUBBLE_BLOCKCHAIN_ID environment variable to be set
+<br>Requires HUBBLE_RPC_HOST, HUBBLE_BLOCKCHAIN_ID, HUBBLE_ENV environment variable to be set
 ```shell
 export HUBBLE_RPC_HOST=candy-hubblenet-rpc.hubble.exchange
 export HUBBLE_BLOCKCHAIN_ID=iKMFgo49o4X3Pd3UWUkmPwjKom3xZz3Vo6Y1kkwL2Ce6DZaPm
+export HUBBLE_ENV=hubblenext
 ```
 
 ```python
@@ -163,7 +164,7 @@ async def main():
 - OrderId: order id
 - OrderType: order type - "limit" order or "ioc" (market order)
 - Removed: whether the event is being removed or not
-- EventName: name of the contract event (OrderPlaced|OrderAccepted|OrderRejected|OrderMatched|OrderCancelAccepted|OrderCancelRejected)
+- EventName: name of the contract event (OrderAccepted|OrderRejected|OrderMatched|OrderCancelAccepted|OrderCancelRejected)
 - Args: args is a dynamic field and it contains information about the event. For example, OrderPlaced event contains order object, OrderMatched event contains fillAmount and price
 - BlockNumber: block number in which the transaction was included
 - BlockStatus: (head|accepted) whether the block is accepted or only a preferred block(head block)
@@ -171,9 +172,8 @@ async def main():
 - TransactionHash: transaction hash
 
 #### EventName description
-- OrderPlaced - Order was successfully placed(only for IOC orders)
-- OrderAccepted - Order was successfully placed(only for Limit orders)
-- OrderRejected - Order was rejected(only for Limit orders)
+- OrderAccepted - Order was successfully placed
+- OrderRejected - Order was rejected
 - OrderMatched - Order was matched
 - OrderCancelAccepted - Order was successfully cancelled(only for Limit orders)
 - OrderCancelRejected - Order cancel was rejected(only for Limit orders)

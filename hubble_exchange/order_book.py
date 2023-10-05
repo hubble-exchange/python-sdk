@@ -10,9 +10,11 @@ from web3.logs import DISCARD
 from hubble_exchange.constants import (CHAIN_ID, GAS_PER_ORDER, MAX_GAS_LIMIT,
                                        ClearingHouseContractAddress,
                                        IOCBookContractAddress,
+                                       LimitOrderBookContractAddress,
                                        OrderBookContractAddress)
 from hubble_exchange.eth import get_async_web3_client, get_sync_web3_client
-from hubble_exchange.models import ExecutionMode, IOCOrder, LimitOrder, OrderStatus, Trade, TransactionMode
+from hubble_exchange.models import (ExecutionMode, IOCOrder, LimitOrder,
+                                    OrderStatus, Trade, TransactionMode)
 from hubble_exchange.utils import (get_address_from_private_key,
                                    int_to_scaled_float)
 
@@ -22,7 +24,11 @@ with open(f"{HERE}/contract_abis/OrderBook.json", 'r') as abi_file:
     abi_str = abi_file.read()
     ORDERBOOK_ABI = json.loads(abi_str)
 
-with open(f"{HERE}/contract_abis/ImmediayeOrCancelOrders.json", 'r') as abi_file:
+with open(f"{HERE}/contract_abis/LimitOrderBook.json", 'r') as abi_file:
+    abi_str = abi_file.read()
+    LIMIT_ORDERBOOK_ABI = json.loads(abi_str)
+
+with open(f"{HERE}/contract_abis/ImmediateOrCancelOrders.json", 'r') as abi_file:
     abi_str = abi_file.read()
     IOC_ORDERBOOK_ABI = json.loads(abi_str)
 
@@ -42,6 +48,7 @@ class OrderBookClient(object):
 
         self.web3_client = get_async_web3_client()
         self.order_book_contract = self.web3_client.eth.contract(address=OrderBookContractAddress, abi=ORDERBOOK_ABI)
+        self.limit_order_book_contract = self.web3_client.eth.contract(address=LimitOrderBookContractAddress, abi=LIMIT_ORDERBOOK_ABI)
         self.ioc_order_book_contract = self.web3_client.eth.contract(address=IOCBookContractAddress, abi=IOC_ORDERBOOK_ABI)
         self.clearing_house_contract = self.web3_client.eth.contract(address=ClearingHouseContractAddress, abi=CLEARINGHOUSE_ABI)
 
@@ -66,7 +73,7 @@ class OrderBookClient(object):
         return markets
 
     async def get_limit_order_status(self, order_id: HexBytes):
-        response = await self.order_book_contract.functions.orderStatus(order_id).call()
+        response = await self.limit_order_book_contract.functions.orderStatus(order_id).call()
         status = response[3]
         filled_amount = response[1]
         if status == OrderStatus.Placed.value and filled_amount > 0:
@@ -84,8 +91,8 @@ class OrderBookClient(object):
 
         tx_options = {'gas': min(GAS_PER_ORDER * len(orders), MAX_GAS_LIMIT)}
         tx_options.update(custom_tx_options or {})
-        method = getattr(self.order_book_contract.functions, "placeOrders")
-        return await self._send_orderbook_transaction(method, [place_order_payload], tx_options, mode)
+        method = getattr(self.limit_order_book_contract.functions, "placeOrders")
+        return await self._send_transaction(method, [place_order_payload], tx_options, mode)
 
     async def place_ioc_orders(self, orders: List[IOCOrder], custom_tx_options=None, mode=None):
         """
@@ -99,7 +106,7 @@ class OrderBookClient(object):
         tx_options = {'gas': min(GAS_PER_ORDER * len(orders), MAX_GAS_LIMIT)}
         tx_options.update(custom_tx_options or {})
         method = getattr(self.ioc_order_book_contract.functions, "placeOrders")
-        return await self._send_orderbook_transaction(method, [place_order_payload], tx_options, mode)
+        return await self._send_transaction(method, [place_order_payload], tx_options, mode)
 
     async def cancel_orders(self, orders: list[LimitOrder], custom_tx_options=None, mode=None):
         cancel_order_payload = []
@@ -109,8 +116,8 @@ class OrderBookClient(object):
         tx_options = {'gas': min(GAS_PER_ORDER * len(orders), MAX_GAS_LIMIT)}
         tx_options.update(custom_tx_options or {})
 
-        method = getattr(self.order_book_contract.functions, "cancelOrders")
-        return await self._send_orderbook_transaction(method, [cancel_order_payload], tx_options, mode)
+        method = getattr(self.limit_order_book_contract.functions, "cancelOrders")
+        return await self._send_transaction(method, [cancel_order_payload], tx_options, mode)
 
     async def get_order_fills(self, order_id: str) -> List[Dict]:
         orders_matched_events = await self.order_book_contract.events.OrderMatched().get_logs(
@@ -187,6 +194,8 @@ class OrderBookClient(object):
             contract = self.order_book_contract
         if contract_name == "ioc":
             contract = self.ioc_order_book_contract
+        if contract_name == "limit":
+            contract = self.limit_order_book_contract
         event = getattr(contract.events, event_name)
         return event().process_receipt(receipt, DISCARD)
 
@@ -200,7 +209,7 @@ class OrderBookClient(object):
             self.nonce += 1
         return self.nonce - 1
 
-    async def _send_orderbook_transaction(self, method: AsyncContractFunction, args: List[Any], tx_options: Dict, mode: TransactionMode) -> HexBytes:
+    async def _send_transaction(self, method: AsyncContractFunction, args: List[Any], tx_options: Dict, mode: TransactionMode) -> HexBytes:
         if mode is None:
             mode = self.transaction_mode
 

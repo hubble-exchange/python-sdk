@@ -4,7 +4,7 @@ from typing import Dict, List
 import websockets
 from hexbytes import HexBytes
 
-from hubble_exchange.eip712 import get_ioc_order_hash
+from hubble_exchange.constants import get_minimum_quantity, get_price_precision
 from hubble_exchange.eth import get_async_web3_client, get_websocket_endpoint
 from hubble_exchange.models import (AsyncOrderBookDepthCallback,
                                     AsyncOrderStatusCallback,
@@ -18,7 +18,8 @@ from hubble_exchange.models import (AsyncOrderBookDepthCallback,
                                     WebsocketResponse)
 from hubble_exchange.order_book import OrderBookClient, TransactionMode
 from hubble_exchange.utils import (add_0x_prefix, float_to_scaled_int,
-                                   get_address_from_private_key, get_new_salt)
+                                   get_address_from_private_key, get_new_salt,
+                                   validate_limit_order_like)
 
 
 class HubbleClient:
@@ -75,17 +76,10 @@ class HubbleClient:
             raise ValueError("Cannot place more than 75 orders at once")
 
         for order in orders:
-            if order.amm_index is None:
-                raise ValueError("Order AMM index is not set")
-            if order.base_asset_quantity is None:
-                raise ValueError("Order base asset quantity is not set")
-            if order.price is None:
-                raise ValueError("Order price is not set")
-            if order.reduce_only is None:
-                raise ValueError("Order reduce only is not set")
+            validate_limit_order_like(order)
+
             if order.post_only is None:
                 raise ValueError("Order post only is not set")
-
             # trader and salt can be set automatically
             if order.trader in [None, "0x", ""]:
                 order.trader = self.trader_address
@@ -109,7 +103,7 @@ class HubbleClient:
 
             event_order_ids = set()  # stores order ids present in events
             response = []
-            accepted_events = self.order_book_client.get_events_from_receipt(receipt, "OrderAccepted")
+            accepted_events = self.order_book_client.get_events_from_receipt(receipt, "OrderAccepted", "limit")
             for event in accepted_events:
                 order_id = event.args.orderHash
                 event_order_ids.add(add_0x_prefix(order_id.hex()))
@@ -118,7 +112,7 @@ class HubbleClient:
                     "success": True
                 })
 
-            rejected_events = self.order_book_client.get_events_from_receipt(receipt, "OrderRejected")
+            rejected_events = self.order_book_client.get_events_from_receipt(receipt, "OrderRejected", "limit")
             for event in rejected_events:
                 order_id = event.args.orderHash
                 event_order_ids.add(add_0x_prefix(order_id.hex()))
@@ -146,14 +140,8 @@ class HubbleClient:
             raise ValueError("Cannot place more than 75 orders at once")
 
         for order in orders:
-            if order.amm_index is None:
-                raise ValueError("Order AMM index is not set")
-            if order.base_asset_quantity is None:
-                raise ValueError("Order base asset quantity is not set")
-            if order.price is None:
-                raise ValueError("Order price is not set")
-            if order.reduce_only is None:
-                raise ValueError("Order reduce only is not set")
+            validate_limit_order_like(order)
+
             if order.expire_at is None:
                 raise ValueError("Order expiry is not set")
 
@@ -165,7 +153,7 @@ class HubbleClient:
 
         order_ids = set()  # stores all the order ids
         for order in orders:
-            order_hash = get_ioc_order_hash(order)
+            order_hash = order.get_order_hash()
             order.id = order_hash
             order_ids.add(order_hash)  # add each order id to the set
 
@@ -178,10 +166,10 @@ class HubbleClient:
         if wait_for_response:
             receipt = await self.web3_client.eth.get_transaction_receipt(tx_hash)
 
-            events = self.order_book_client.get_events_from_receipt(receipt, "OrderPlaced", contract_name="ioc")
             event_order_ids = set()  # stores order ids present in events
             response = []
-            for event in events:
+            accepted_events = self.order_book_client.get_events_from_receipt(receipt, "OrderAccepted", "ioc")
+            for event in accepted_events:
                 order_id = event.args.orderHash
                 event_order_ids.add(add_0x_prefix(order_id.hex()))
                 response.append({
@@ -189,18 +177,28 @@ class HubbleClient:
                     "success": True
                 })
 
-            missing_order_ids = order_ids - event_order_ids  # order ids not present in events
+            rejected_events = self.order_book_client.get_events_from_receipt(receipt, "OrderRejected", "ioc")
+            for event in rejected_events:
+                order_id = event.args.orderHash
+                event_order_ids.add(add_0x_prefix(order_id.hex()))
+                response.append({
+                    "order_id": add_0x_prefix(order_id.hex()),
+                    "success": False,
+                    "error": event.args.err
+                })
 
+            # check for missing order ids; should never happen
+            missing_order_ids = order_ids - event_order_ids
             for missing_id in missing_order_ids:
                 response.append({
                     "order_id": missing_id,
-                    "success": False
+                    "success": False,
+                    "error": "Unknown error"
                 })
 
             return await callback(response)
         else:
             return await callback(orders)
-
     async def cancel_limit_orders(self, orders: List[LimitOrder], wait_for_response: bool, callback, tx_options = None, mode=None):
         if len(orders) > 100:
             raise ValueError("Cannot cancel more than 100 orders at once")
@@ -223,14 +221,14 @@ class HubbleClient:
 
             response = []
             event_order_ids = set()
-            cancelled_events = self.order_book_client.get_events_from_receipt(receipt, "OrderCancelAccepted")
+            cancelled_events = self.order_book_client.get_events_from_receipt(receipt, "OrderCancelAccepted", "limit")
             for event in cancelled_events:
                 event_order_ids.add(add_0x_prefix(event.args.orderHash.hex()))
                 response.append({
                     "order_id": add_0x_prefix(event.args.orderHash.hex()),
                     "success": True
                 })
-            rejected_events = self.order_book_client.get_events_from_receipt(receipt, "OrderCancelRejected")
+            rejected_events = self.order_book_client.get_events_from_receipt(receipt, "OrderCancelRejected", "limit")
             for event in rejected_events:
                 event_order_ids.add(add_0x_prefix(event.args.orderHash.hex()))
                 response.append({
