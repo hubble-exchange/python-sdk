@@ -56,13 +56,18 @@ def validate_limit_order_like(order):
     if order.reduce_only is None:
         raise ValueError("Order reduce only is not set")
 
-    epsilon = 1e-10
     min_quantity = get_minimum_quantity(order.amm_index)
-    order_size = int_to_scaled_float(order.base_asset_quantity, 18)
-    if abs(order_size % min_quantity) > epsilon:
-        raise ValueError(f"Order quantity {order_size} is not a multiple of minimum quantity {min_quantity}")
+    scaled_min_quantity = float_to_scaled_int(min_quantity, 18)
+    if not is_multiple(order.base_asset_quantity, scaled_min_quantity):
+        unscaled_order_size = int_to_scaled_float(order.base_asset_quantity, 18)
+        raise ValueError(f"Order quantity {unscaled_order_size} is not a multiple of minimum quantity {min_quantity}")
 
     allowed_price_precision = get_price_precision(order.amm_index)
     price = int_to_scaled_float(order.price, 6)
     if get_precision(price) > allowed_price_precision:
         raise ValueError(f"Decimal precision of order price {price} is greater than allowed precision {allowed_price_precision}")
+
+
+def is_multiple(a, b, tolerance=1e-9):
+    remainder = a % b
+    return abs(remainder) < tolerance or abs(remainder - b) < tolerance
