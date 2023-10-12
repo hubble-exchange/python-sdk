@@ -276,6 +276,79 @@ await client.get_trades(3, 1691669740, 1691583340, callback)
 - OpenNotional: open notional
 - ExecutionMode: execution mode - "maker" or "taker"
 
+## Candlestick data
+
+Historical [candlestick data](https://www.investopedia.com/terms/o/ohlcchart.asp) can be fetched using the `get_candlestick_data` method using market and time range.
+
+It can be obtained for the following timeframes:
+- 1m - 1 minute
+- 3m - 3 minutes
+- 5m - 5 minutes
+- 15m - 15 minutes
+- 30m - 30 minutes
+- 1h - 1 hour
+- 4h - 4 hours
+- 8h - 8 hours
+- 1d - 1 day
+- 1w - 1 week
+- 1M - 1 month
+
+```python
+from hubble_exchange import HubbleClient
+
+# get candlestick data for market id 0, timeframe = 5 minutes, start time = 1696932000, end time = 1696939200
+response = await client.get_candlesticks(0, "5m", 1696932000, 1696939200)
+```
+
+### CandlestickData description
+Example candlestick data:
+```json
+{
+    start: 1696500000,     // start of the time period in unix format
+    end: 1696500300,       // end of the time period in unix format
+    volume: 192267.282,    // volume in USD
+    open: 0.8745,          // open price for the duration
+    close: 0.8851,         // close price for the duration
+    high: 0.8947,          // highest price for the duration
+    low: 0.8675,           // lowest price for the duration
+}
+```
+
+## Historical funding rate
+
+Historical funding rate can be queried using the `get_funding_rate` method using market and timestamp.
+Funding payment happens every hour at the end of the hour as per UTC time. For example, funding payment for 1pm to 2pm will happen at 2pm.
+
+If the provided timestamp is not the end of an hour, the funding rate for the previous hour will be returned. For example, if the timestamp is 1:25pm, the funding rate for 1pm will be returned.
+
+```python
+from hubble_exchange import HubbleClient
+
+# get funding payments for market id 0, time = 1696932000
+funding_rate = await client.get_funding_rate(0, 1696932000)
+```
+
+## Predicted funding rate
+
+Predicted funding rate can be queried using the `get_predicted_funding_rate` method using market. It returns the predicted funding rate for the current hour.
+
+```python
+from hubble_exchange import HubbleClient
+
+# get predicted funding rate for market id 2
+funding_rate = await client.get_predicted_funding_rate(2)
+```
+
+## Historical open interest
+
+Historical open interest can be queried using the `get_open_interest` method using market and timestamp. It returns the open interest in the units of the base asset. For example, if the market is ETH-Perp, the open interest will be in ETH.
+
+```python
+from hubble_exchange import HubbleClient
+
+# get open interest for market id 0, time = 1696932000
+open_interest = await client.get_open_interest(0, 1696932000)
+```
 
 ## Get nonce
 

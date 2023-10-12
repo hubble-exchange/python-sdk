@@ -6,6 +6,7 @@ from hexbytes import HexBytes
 
 from hubble_exchange.constants import get_minimum_quantity, get_price_precision
 from hubble_exchange.eth import get_async_web3_client, get_websocket_endpoint
+from hubble_exchange.indexer_client import IndexerClient
 from hubble_exchange.models import (AsyncOrderBookDepthCallback,
                                     AsyncOrderStatusCallback,
                                     AsyncPlaceOrdersCallback,
@@ -17,7 +18,7 @@ from hubble_exchange.models import (AsyncOrderBookDepthCallback,
                                     OrderStatusResponse, TraderFeedUpdate,
                                     WebsocketResponse)
 from hubble_exchange.order_book import OrderBookClient, TransactionMode
-from hubble_exchange.utils import (add_0x_prefix, float_to_scaled_int,
+from hubble_exchange.utils import (add_0x_prefix, async_ttl_cache, float_to_scaled_int,
                                    get_address_from_private_key, get_new_salt,
                                    validate_limit_order_like)
 
@@ -33,6 +34,7 @@ class HubbleClient:
         self.web3_client = get_async_web3_client()
         self.websocket_endpoint = get_websocket_endpoint()
         self.order_book_client = OrderBookClient(private_key)
+        self.indexer_client = IndexerClient()
 
     def set_transaction_mode(self, mode: TransactionMode):
         self.order_book_client.set_transaction_mode(mode)
@@ -40,8 +42,16 @@ class HubbleClient:
     async def get_nonce(self):
         return await self.order_book_client.get_current_nonce()
 
+    @async_ttl_cache(ttl=300)
     async def get_markets(self):
         return await self.order_book_client.get_markets()
+
+    async def get_market_name(self, market_id):
+        try:
+            markets = await self.get_markets()
+            return markets[market_id]
+        except IndexError:
+            raise ValueError(f"The given market {market_id} does not exist")
 
     async def get_order_book(self, market: int, callback: AsyncOrderBookDepthCallback):
         order_book_depth = await self.web3_client.eth.get_order_book_depth(market)
@@ -63,14 +73,14 @@ class HubbleClient:
     async def get_open_orders(self, market_id: int, callback: AsyncOrderStatusCallback):
         response = await self.web3_client.eth.get_open_orders(self.trader_address, market_id)
         return await callback(response)
-    
+
     async def get_trades(self, market, start_time, end_time, callback):
         if start_time is None or end_time is None:
             raise ValueError("Start and end time must be specified")
 
         response = await self.order_book_client.get_trades(self.trader_address, market, start_time, end_time)
         return await callback(response)
-    
+
     async def place_limit_orders(self, orders: List[LimitOrder], wait_for_response: bool, callback: AsyncPlaceOrdersCallback, tx_options = None, mode=None):
         if len(orders) > 75:
             raise ValueError("Cannot place more than 75 orders at once")
@@ -267,6 +277,22 @@ class HubbleClient:
 
     async def get_order_fills(self, order_id: str) -> List[Dict]:
         return await self.order_book_client.get_order_fills(order_id)
+
+    async def get_candlesticks(self, market, interval, start_time, end_time):
+        market_name = await self.get_market_name(market)
+        return self.indexer_client.get_candles(market_name, interval, start_time, end_time)
+
+    async def get_predicted_funding_rate(self, market):
+        market_name = await self.get_market_name(market)
+        return self.indexer_client.get_predicted_funding_rate(market_name)
+
+    async def get_funding_rate(self, market, timestamp):
+        market_name = await self.get_market_name(market)
+        return self.indexer_client.get_historical_funding_rate(market_name, timestamp)
+
+    async def get_open_interest(self, market, timestamp):
+        market_name = await self.get_market_name(market)
+        return self.indexer_client.get_historical_open_interest(market_name, timestamp)
 
     async def subscribe_to_order_book_depth(
         self, market: int, callback: AsyncSubscribeToOrderBookDepthCallback

@@ -1,3 +1,4 @@
+import functools
 import random
 import time
 from decimal import Decimal, getcontext
@@ -71,3 +72,27 @@ def validate_limit_order_like(order):
 def is_multiple(a, b, tolerance=1e-9):
     remainder = a % b
     return abs(remainder) < tolerance or abs(remainder - b) < tolerance
+
+
+def async_ttl_cache(ttl=300):
+    def decorator(func):
+        cache = {}
+        cache_expiry = {}
+
+        @functools.wraps(func)
+        async def wrapped(*args, **kwargs):
+            cache_key = str(args) + str(kwargs)
+            current_time = time.time()
+
+            if cache_key in cache and (current_time - cache_expiry[cache_key] < ttl):
+                return cache[cache_key]
+
+            result = await func(*args, **kwargs)
+            cache[cache_key] = result
+            cache_expiry[cache_key] = current_time
+
+            return result
+
+        return wrapped
+
+    return decorator

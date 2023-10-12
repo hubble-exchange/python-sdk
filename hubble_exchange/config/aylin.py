@@ -27,3 +27,5 @@ price_precision = {
 
 HTTP_PROTOCOL = "https"
 WS_PROTOCOL = "wss"
+
+allowed_candle_intervals = ["1m", "3m", "5m", "15m", "30m", "1h", "4h", "8h", "1d", "1w", "1M"]
