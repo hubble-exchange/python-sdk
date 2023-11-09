@@ -67,8 +67,6 @@ async def main():
     web3_client.middleware_onion.add(_async_simple_cache_middleware, name="cache")
 
     wallet = web3_client.eth.account.from_key(pk)
-    adapter_params = encode(['uint16', 'uint'], [1, 1000000])
-    adapter_params = adapter_params[30:]  # need to trim the leading zeroes
 
     hgt_remote = web3_client.eth.contract(address=HGT_REMOTE, abi=HGT_REMOTE_ABI)
     usdc = web3_client.eth.contract(address=USDC_ON_AVALANCHE, abi=IERC20_ABI)
@@ -81,10 +79,11 @@ async def main():
         "isInsuranceFund": False,
         "refundAddress": hubblenet_user_address,
         "zroPaymentAddress": ADDRESS_ZERO,
-        "adapterParams": adapter_params,
+        "adapterParams": b'',  # default adapter params
     }
 
     l0_fee = await hgt_remote.functions.estimateSendFee(depositVars).call()
+    print("l0 fee: ", l0_fee)
 
     nonce = await web3_client.eth.get_transaction_count(wallet.address)
     tx = await usdc.functions.approve(HGT_REMOTE, deposit_amount).build_transaction({
