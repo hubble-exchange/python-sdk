@@ -1,0 +1,1019 @@
+[
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "time",
+                "type": "uint256"
+            }
+        ],
+        "name": "DepositFees",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint16",
+                "name": "_srcChainId",
+                "type": "uint16"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes",
+                "name": "_srcAddress",
+                "type": "bytes"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "_nonce",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes",
+                "name": "_payload",
+                "type": "bytes"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes",
+                "name": "_reason",
+                "type": "bytes"
+            }
+        ],
+        "name": "DepositSecondHopFailure",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "to",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint16",
+                "name": "_srcChainId",
+                "type": "uint16"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes",
+                "name": "_srcAddress",
+                "type": "bytes"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "_nonce",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "tokenIdx",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            }
+        ],
+        "name": "FundsRescued",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            }
+        ],
+        "name": "Paused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "uint16",
+                "name": "_dstChainId",
+                "type": "uint16"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "_to",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "_amount",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "_nonce",
+                "type": "uint256"
+            }
+        ],
+        "name": "ReceiveFromHubbleNet",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "uint16",
+                "name": "_dstChainId",
+                "type": "uint16"
+            },
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "_nonce",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes",
+                "name": "_lzPayload",
+                "type": "bytes"
+            }
+        ],
+        "name": "SendToChain",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "uint16",
+                "name": "srcChainId",
+                "type": "uint16"
+            },
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "nonce",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "tokenIdx",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amountLD",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes",
+                "name": "payload",
+                "type": "bytes"
+            }
+        ],
+        "name": "StargateDepositProcessed",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            }
+        ],
+        "name": "Unpaused",
+        "type": "event"
+    },
+    {
+        "inputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "token",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "priceFeed",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "collectedFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "srcPoolId",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "decimals",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct IHGTRemote.SupportedToken",
+                "name": "token",
+                "type": "tuple"
+            }
+        ],
+        "name": "addSupportedToken",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "circuitBreaker",
+        "outputs": [
+            {
+                "internalType": "contract CircuitBreakerUpgradeable",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "to",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "tokenIdx",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "amount",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "toGas",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "isInsuranceFund",
+                        "type": "bool"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "refundAddress",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "zroPaymentAddress",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "bytes",
+                        "name": "adapterParams",
+                        "type": "bytes"
+                    }
+                ],
+                "internalType": "struct IHGTRemote.DepositVars",
+                "name": "vars",
+                "type": "tuple"
+            }
+        ],
+        "name": "deposit",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "to",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "tokenIdx",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "amount",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "toGas",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "isInsuranceFund",
+                        "type": "bool"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "refundAddress",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "zroPaymentAddress",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "bytes",
+                        "name": "adapterParams",
+                        "type": "bytes"
+                    }
+                ],
+                "internalType": "struct IHGTRemote.DepositVars",
+                "name": "vars",
+                "type": "tuple"
+            }
+        ],
+        "name": "estimateSendFee",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "to",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "tokenIdx",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "amount",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "toGas",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "isInsuranceFund",
+                        "type": "bool"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "refundAddress",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "zroPaymentAddress",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "bytes",
+                        "name": "adapterParams",
+                        "type": "bytes"
+                    }
+                ],
+                "internalType": "struct IHGTRemote.DepositVars",
+                "name": "vars",
+                "type": "tuple"
+            }
+        ],
+        "name": "estimateSendFeeInUSD",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint16",
+                "name": "",
+                "type": "uint16"
+            },
+            {
+                "internalType": "bytes",
+                "name": "",
+                "type": "bytes"
+            },
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "name": "failedMessages",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "tokenIdx",
+                "type": "uint256"
+            }
+        ],
+        "name": "feeCollected",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "governance",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "_governance",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "_starGateRouter",
+                "type": "address"
+            },
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "token",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "priceFeed",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "collectedFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "srcPoolId",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "decimals",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct IHGTRemote.SupportedToken",
+                "name": "_usdc",
+                "type": "tuple"
+            },
+            {
+                "internalType": "address",
+                "name": "_nativeTokenPriceFeed",
+                "type": "address"
+            }
+        ],
+        "name": "initialize",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "lzClient",
+        "outputs": [
+            {
+                "internalType": "contract LZClient",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "nativeTokenPriceFeed",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint16",
+                "name": "_srcChainId",
+                "type": "uint16"
+            },
+            {
+                "internalType": "bytes",
+                "name": "",
+                "type": "bytes"
+            },
+            {
+                "internalType": "uint64",
+                "name": "nonce",
+                "type": "uint64"
+            },
+            {
+                "internalType": "bytes",
+                "name": "payload",
+                "type": "bytes"
+            }
+        ],
+        "name": "nonblockingLzReceive",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "pause",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "paused",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint16",
+                "name": "_srcChainId",
+                "type": "uint16"
+            },
+            {
+                "internalType": "uint256",
+                "name": "nonce",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "_token",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "amountLD",
+                "type": "uint256"
+            },
+            {
+                "internalType": "bytes",
+                "name": "payload",
+                "type": "bytes"
+            }
+        ],
+        "name": "processSgReceive",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "tokenIdx",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "l0Fee",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint16",
+                "name": "_dstChainId",
+                "type": "uint16"
+            },
+            {
+                "internalType": "uint8",
+                "name": "_functionType",
+                "type": "uint8"
+            },
+            {
+                "internalType": "bytes",
+                "name": "_toAddress",
+                "type": "bytes"
+            },
+            {
+                "internalType": "bytes",
+                "name": "_transferAndCallPayload",
+                "type": "bytes"
+            },
+            {
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "dstGasForCall",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "dstNativeAmount",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "bytes",
+                        "name": "dstNativeAddr",
+                        "type": "bytes"
+                    }
+                ],
+                "internalType": "struct IStargateRouter.lzTxObj",
+                "name": "_lzTxParams",
+                "type": "tuple"
+            }
+        ],
+        "name": "quoteStargateFeeInUSD",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint16",
+                "name": "srcChainId",
+                "type": "uint16"
+            },
+            {
+                "internalType": "bytes",
+                "name": "srcAddress",
+                "type": "bytes"
+            },
+            {
+                "internalType": "uint256",
+                "name": "nonce",
+                "type": "uint256"
+            },
+            {
+                "internalType": "bytes",
+                "name": "_payload",
+                "type": "bytes"
+            }
+        ],
+        "name": "rescueDepositFunds",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint16",
+                "name": "srcChainId",
+                "type": "uint16"
+            },
+            {
+                "internalType": "bytes",
+                "name": "srcAddress",
+                "type": "bytes"
+            },
+            {
+                "internalType": "uint64",
+                "name": "nonce",
+                "type": "uint64"
+            },
+            {
+                "internalType": "bytes",
+                "name": "payload",
+                "type": "bytes"
+            }
+        ],
+        "name": "rescueWithdrawFunds",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint16",
+                "name": "srcChainId",
+                "type": "uint16"
+            },
+            {
+                "internalType": "bytes",
+                "name": "srcAddress",
+                "type": "bytes"
+            },
+            {
+                "internalType": "uint256",
+                "name": "nonce",
+                "type": "uint256"
+            },
+            {
+                "internalType": "bytes",
+                "name": "_payload",
+                "type": "bytes"
+            }
+        ],
+        "name": "retryDeposit",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "_circuitBreaker",
+                "type": "address"
+            }
+        ],
+        "name": "setCircuitBreaker",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "__governance",
+                "type": "address"
+            }
+        ],
+        "name": "setGovernace",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "_lzClient",
+                "type": "address"
+            }
+        ],
+        "name": "setLZClient",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "_starGateRouter",
+                "type": "address"
+            }
+        ],
+        "name": "setStargateConfig",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "_whitelistRelayer",
+                "type": "address"
+            },
+            {
+                "internalType": "bool",
+                "name": "isWhiteList",
+                "type": "bool"
+            }
+        ],
+        "name": "setWhitelistRelayer",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint16",
+                "name": "_srcChainId",
+                "type": "uint16"
+            },
+            {
+                "internalType": "bytes",
+                "name": "_srcAddress",
+                "type": "bytes"
+            },
+            {
+                "internalType": "uint256",
+                "name": "nonce",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "_token",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "amountLD",
+                "type": "uint256"
+            },
+            {
+                "internalType": "bytes",
+                "name": "payload",
+                "type": "bytes"
+            }
+        ],
+        "name": "sgReceive",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "stargateRouter",
+        "outputs": [
+            {
+                "internalType": "contract IStargateRouter",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "name": "supportedTokens",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "token",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "priceFeed",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "collectedFee",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "srcPoolId",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "decimals",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "unpause",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "name": "whitelistedRelayer",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "stateMutability": "payable",
+        "type": "receive"
+    }
+]
