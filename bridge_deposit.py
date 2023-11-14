@@ -17,6 +17,7 @@ in the above example, 95 USDC will be deposited to margin account, and 5 USDC wi
 import asyncio
 import json
 import os
+import time
 
 from eth_abi import encode
 from web3 import AsyncHTTPProvider, AsyncWeb3
@@ -94,6 +95,8 @@ async def main():
     tx_hash = await web3_client.eth.send_raw_transaction(signed_tx.rawTransaction)
     print("USDC approve tx hash: ", tx_hash.hex())
     await web3_client.eth.wait_for_transaction_receipt(tx_hash)
+    print('sleeping for 5 seconds')
+    time.sleep(5)
 
     tx = await hgt_remote.functions.deposit(depositVars).build_transaction({
         "from": wallet.address,

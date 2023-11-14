@@ -14,11 +14,13 @@ pip install hubble-exchange
 ## Example usage:
 
 All read/write functions are async
-<br>Requires HUBBLE_RPC_HOST, HUBBLE_BLOCKCHAIN_ID, HUBBLE_ENV environment variable to be set
+<br>Requires HUBBLE_RPC, HUBBLE_WS_RPC, HUBBLE_ENV, PRIVATE_KEY environment variable to be set
 ```shell
-export HUBBLE_RPC_HOST=candy-hubblenet-rpc.hubble.exchange
-export HUBBLE_BLOCKCHAIN_ID=iKMFgo49o4X3Pd3UWUkmPwjKom3xZz3Vo6Y1kkwL2Ce6DZaPm
+export HUBBLE_RPC=https://candy-hubblenet-rpc.hubble.exchange/ext/bc/iKMFgo49o4X3Pd3UWUkmPwjKom3xZz3Vo6Y1kkwL2Ce6DZaPm/rpc
+export HUBBLE_WS_RPC=wss://candy-hubblenet-rpc.hubble.exchange/ext/bc/iKMFgo49o4X3Pd3UWUkmPwjKom3xZz3Vo6Y1kkwL2Ce6DZaPm/ws
 export HUBBLE_ENV=hubblenext
+export PRIVATE_KEY=<private key>
+export HUBBLE_INDEXER_API_URL=""
 ```
 
 ```python

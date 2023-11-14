@@ -137,24 +137,14 @@ def get_sync_web3_client() -> Web3:
 
 
 def get_rpc_endpoint() -> str:
-    rpc_host = os.getenv("HUBBLE_RPC_HOST")
-    if not rpc_host:
-        raise ValueError("HUBBLE_RPC_HOST environment variable not set")
-    blockchain_id = os.getenv("HUBBLE_BLOCKCHAIN_ID")
-    if not blockchain_id:
-        raise ValueError("HUBBLE_BLOCKCHAIN_ID environment variable not set")
-    path = f"/ext/bc/{blockchain_id}/rpc"
-    rpc_endpoint = f"{HTTP_PROTOCOL}://{rpc_host}{path}"
+    rpc_endpoint = os.getenv("HUBBLE_RPC")
+    if not rpc_endpoint:
+        raise ValueError("HUBBLE_RPC environment variable not set")
     return rpc_endpoint
 
 
 def get_websocket_endpoint() -> str:
-    rpc_host = os.getenv("HUBBLE_RPC_HOST")
-    if not rpc_host:
-        raise ValueError("HUBBLE_RPC_HOST environment variable not set")
-    blockchain_id = os.getenv("HUBBLE_BLOCKCHAIN_ID")
-    if not blockchain_id:
-        raise ValueError("HUBBLE_BLOCKCHAIN_ID environment variable not set")
-    path = f"/ext/bc/{blockchain_id}/ws"
-    websocket_endpoint = f"{WS_PROTOCOL}://{rpc_host}{path}"
-    return websocket_endpoint
+    ws_rpc_endpoint = os.getenv("HUBBLE_WS_RPC")
+    if not ws_rpc_endpoint:
+        raise ValueError("HUBBLE_WS_RPC environment variable not set")
+    return ws_rpc_endpoint
