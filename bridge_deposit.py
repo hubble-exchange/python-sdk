@@ -72,6 +72,9 @@ async def main():
     hgt_remote = web3_client.eth.contract(address=HGT_REMOTE, abi=HGT_REMOTE_ABI)
     usdc = web3_client.eth.contract(address=USDC_ON_AVALANCHE, abi=IERC20_ABI)
 
+    adapter_params = encode(['uint16', 'uint'], [1, 400000])[30:]
+    # adapter_params = b''  # default params
+
     depositVars = {
         "to": hubblenet_user_address,
         "tokenIdx": 0,
@@ -80,7 +83,7 @@ async def main():
         "isInsuranceFund": False,
         "refundAddress": hubblenet_user_address,
         "zroPaymentAddress": ADDRESS_ZERO,
-        "adapterParams": b'',  # default adapter params
+        "adapterParams": adapter_params,
     }
 
     l0_fee = await hgt_remote.functions.estimateSendFee(depositVars).call()
