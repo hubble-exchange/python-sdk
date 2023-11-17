@@ -19,7 +19,7 @@ from hubble_exchange.models import (AsyncOrderBookDepthCallback,
                                     WebsocketResponse)
 from hubble_exchange.order_book import OrderBookClient, TransactionMode
 from hubble_exchange.utils import (add_0x_prefix, async_ttl_cache, float_to_scaled_int,
-                                   get_address_from_private_key, get_new_salt,
+                                   get_address_from_private_key, get_new_salt, int_to_scaled_float,
                                    validate_limit_order_like)
 
 
@@ -60,6 +60,10 @@ class HubbleClient:
     async def get_margin_and_positions(self, callback: AsyncPositionCallback):
         response = await self.web3_client.eth.get_margin_and_positions(self.trader_address)
         return await callback(response)
+
+    async def get_balance(self, callback):
+        balance = await self.web3_client.eth.get_balance(self.trader_address)
+        return await callback(int_to_scaled_float(balance, 18))
 
     async def get_limit_order_details(self, order_id: HexBytes, callback: AsyncOrderStatusCallback):
         """ Works only for open limit orders """
