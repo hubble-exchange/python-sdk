@@ -16,13 +16,13 @@ GAS_PER_ORDER = 300_000  # 300k
 min_quantity = {
     0: 0.01,
     1: 1,
-    2: 10,
+    2: 0.1,
 }
 
 price_precision = {
     0: 2,
     1: 3,
-    2: 4,
+    2: 3,
 }
 
 HTTP_PROTOCOL = "https"
