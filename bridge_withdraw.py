@@ -105,7 +105,7 @@ async def main():
     signed_tx = web3_client.eth.account.sign_transaction(tx, pk)
     tx_hash = await web3_client.eth.send_raw_transaction(signed_tx.rawTransaction)
     print("withdraw tx hash on hubblenet: ", tx_hash.hex())
-    print('you can go to https://layerzeroscan.com/ to check the status of the transaction')
+    print(f'you can go to https://layerzeroscan.com/tx/{tx_hash.hex()} to check the status of the transaction')
     await web3_client.eth.wait_for_transaction_receipt(tx_hash)
     return
 
