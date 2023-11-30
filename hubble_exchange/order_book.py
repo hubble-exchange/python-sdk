@@ -14,7 +14,7 @@ from hubble_exchange.constants import (CHAIN_ID, GAS_PER_ORDER, MAX_GAS_LIMIT,
                                        OrderBookContractAddress)
 from hubble_exchange.eth import get_async_web3_client, get_sync_web3_client
 from hubble_exchange.models import (ExecutionMode, IOCOrder, LimitOrder,
-                                    OrderStatus, Trade, TransactionMode)
+                                    OrderStatus, SendTransactionResponse, Trade, TransactionMode)
 from hubble_exchange.utils import (get_address_from_private_key,
                                    int_to_scaled_float)
 
@@ -209,7 +209,8 @@ class OrderBookClient(object):
             self.nonce += 1
         return self.nonce - 1
 
-    async def _send_transaction(self, method: AsyncContractFunction, args: List[Any], tx_options: Dict, mode: TransactionMode) -> HexBytes:
+    async def _send_transaction(self, method: AsyncContractFunction, args: List[Any], tx_options: Dict, mode: TransactionMode) -> SendTransactionResponse:
+        response = SendTransactionResponse()
         if mode is None:
             mode = self.transaction_mode
 
@@ -227,9 +228,11 @@ class OrderBookClient(object):
         transaction = await method(*args).build_transaction(tx_params)
         signed_tx = self.web3_client.eth.account.sign_transaction(transaction, self._private_key)
         tx_hash = await self.web3_client.eth.send_raw_transaction(signed_tx.rawTransaction)
+        response.tx_hash = tx_hash
         if mode == TransactionMode.wait_for_accept:
-            await self.web3_client.eth.wait_for_transaction_receipt(tx_hash, timeout=120, poll_latency=0.1)
+            tx_receipt = await self.web3_client.eth.wait_for_transaction_receipt(tx_hash, timeout=120, poll_latency=0.1)
+            response.receipt = tx_receipt
         elif mode == TransactionMode.wait_for_head:
             await self.web3_client.eth.wait_for_transaction_status(tx_hash, timeout=120, poll_latency=0.1)
 
-        return tx_hash
+        return response

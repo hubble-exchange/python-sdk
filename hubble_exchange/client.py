@@ -111,9 +111,12 @@ class HubbleClient:
         if wait_for_response:
             mode = TransactionMode.wait_for_accept
 
-        tx_hash = await self.order_book_client.place_limit_orders(orders, tx_options, mode)
+        tx_response = await self.order_book_client.place_limit_orders(orders, tx_options, mode)
+        tx_hash = tx_response.tx_hash
         if wait_for_response:
-            receipt = await self.web3_client.eth.get_transaction_receipt(tx_hash)
+            receipt = tx_response.receipt
+            if not receipt:
+                receipt = await self.web3_client.eth.get_transaction_receipt(tx_hash)
 
             event_order_ids = set()  # stores order ids present in events
             response = []
@@ -176,9 +179,12 @@ class HubbleClient:
         if wait_for_response:
             mode = TransactionMode.wait_for_accept
 
-        tx_hash = await self.order_book_client.place_ioc_orders(orders, tx_options, mode)
+        tx_response = await self.order_book_client.place_ioc_orders(orders, tx_options, mode)
+        tx_hash = tx_response.tx_hash
         if wait_for_response:
-            receipt = await self.web3_client.eth.get_transaction_receipt(tx_hash)
+            receipt = tx_response.receipt
+            if not receipt:
+                receipt = await self.web3_client.eth.get_transaction_receipt(tx_hash)
 
             event_order_ids = set()  # stores order ids present in events
             response = []
@@ -228,10 +234,13 @@ class HubbleClient:
             order.id = order_hash
             order_ids.add(order_hash)  # add each order id to the set
 
-        tx_hash = await self.order_book_client.cancel_orders(orders, tx_options, mode)
+        tx_response = await self.order_book_client.cancel_orders(orders, tx_options, mode)
+        tx_hash = tx_response.tx_hash
 
         if wait_for_response:
-            receipt = await self.web3_client.eth.get_transaction_receipt(tx_hash)
+            receipt = tx_response.receipt
+            if not receipt:
+                receipt = await self.web3_client.eth.get_transaction_receipt(tx_hash)
 
             response = []
             event_order_ids = set()

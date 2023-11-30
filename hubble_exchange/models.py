@@ -7,6 +7,7 @@ from eth_typing import Address
 from hexbytes import HexBytes
 from typing_extensions import Protocol
 from web3 import Web3
+from web3.types import TxReceipt
 
 from hubble_exchange.utils import float_to_scaled_int, get_new_salt
 
@@ -126,6 +127,11 @@ class IOCOrder:
             (b'\x01' if self.reduce_only else b'\x00').rjust(32, b'\0')  # bool
         )
         return Web3.keccak(packed_data)
+
+
+class SendTransactionResponse:
+    tx_hash: HexBytes
+    receipt: TxReceipt
 
 
 @dataclass
