@@ -1,3 +1,4 @@
+import math
 import time
 from dataclasses import dataclass
 from enum import Enum
@@ -127,6 +128,49 @@ class IOCOrder:
             (b'\x01' if self.reduce_only else b'\x00').rjust(32, b'\0')  # bool
         )
         return Web3.keccak(packed_data)
+
+
+@dataclass
+class SignedOrder:
+    id: HexBytes
+    amm_index: int
+    trader: Address
+    base_asset_quantity: int
+    price: int
+    salt: int
+    reduce_only: bool
+    expire_at: int
+    signature: HexBytes
+
+    def to_dict(self):
+        return {
+            "orderType": 2,  # hardcoded type = 2 for signed orders
+            "expireAt": self.expire_at,
+            "ammIndex": self.amm_index,
+            "trader": self.trader,
+            "baseAssetQuantity": self.base_asset_quantity,
+            "price": self.price,
+            "salt": self.salt,
+            "reduceOnly": self.reduce_only,
+            "postOnly": True,
+        }
+
+    @classmethod
+    def new(cls, amm_index: int, base_asset_quantity: float, price: float, reduce_only: bool, expiry_duration: int):
+        """
+        Create a new order with a random salt and no ID or trader. This can be used for placing
+        multiple orders at once.
+        """
+        return cls(
+            id=None, # type: ignore
+            signature=None, # type: ignore
+            amm_index=amm_index,
+            trader=None, # type: ignore
+            base_asset_quantity=Web3.to_wei(abs(base_asset_quantity), 'ether') * int(math.copysign(1, base_asset_quantity)),
+            price=Web3.to_wei(price, 'mwei'),
+            salt=get_new_salt(),
+            reduce_only=reduce_only,
+            expire_at=int(time.time()) + expiry_duration)
 
 
 class SendTransactionResponse:

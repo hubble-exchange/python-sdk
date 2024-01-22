@@ -8,6 +8,7 @@ OrderBookContractAddress = Web3.to_checksum_address(Address("0x03000000000000000
 LimitOrderBookContractAddress = Web3.to_checksum_address(Address("0x03000000000000000000000000000000000000b3"))
 IOCBookContractAddress = Web3.to_checksum_address(Address("0x03000000000000000000000000000000000000b4"))
 ClearingHouseContractAddress = Web3.to_checksum_address(Address("0x03000000000000000000000000000000000000b2"))
+SignedOrderBookContractAddress = Web3.to_checksum_address(Address("0xb589490250fAEaF7D80D0b5A41db5059d55A85Df"))
 
 CHAIN_ID = 486
 MAX_GAS_LIMIT = 7_000_000  # 7 million

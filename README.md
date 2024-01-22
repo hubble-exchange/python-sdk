@@ -53,6 +53,11 @@ async def main():
     # placed_orders list will contain the order ids for the orders placed
     placed_orders = await client.place_ioc_orders(ioc_orders, True, callback)
 
+    # place signed order
+    signed_orders = []
+    signed_orders.append(SignedOrder.new(0, 1, 1800, False, 10))
+    await client.place_signed_orders(signed_orders)
+
     # get limit order details - only works for open limit orders
     order_details = await client.get_limit_order_details(order.id, callback)
 
@@ -65,6 +70,9 @@ async def main():
     # order can also be cancelled by order id
     await client.cancel_order_by_id(order.id, True, callback)
 
+    # cancel signed orders
+    await client.cancel_signed_orders(signed_orders, True, callback)
+
     # get current order book for market = 1
     order_book = await client.get_order_book(1, callback)
 
@@ -72,7 +80,7 @@ async def main():
     positions = await client.get_margin_and_positions(callback)
 
     # get order fills
-    order_fills = await client.get_order_fills()
+    order_fills = await client.get_order_fills(order_id)
 
     # get all open orders
     open_orders = await client.get_open_orders(None, callback)
@@ -89,6 +97,26 @@ async def main():
         print(f"Received orderbook update: {message}")
 
     asyncio.run(client.subscribe_to_order_book_depth(0, callback=on_message))
+```
+
+## Signed maker orders
+
+Signed orders are orders that are signed by the trader and sent to the matching engine. The matching engine will verify the signature and place the order. Signed orders don't make a transaction on the blockchain.
+
+```python
+from hubble_exchange import SignedOrder
+
+signed_orders = []
+signed_orders.append(SignedOrder.new(0, 1, 1800, False, 10))
+await client.place_signed_orders(signed_orders)
+```
+
+### Cancelling Signed orders
+
+Cancelling signed orders requires a transaction on the blockchain just like limit orders. This is to ensure that the order is not matched even if the matching engine attempts to match it.
+
+```python
+await client.cancel_signed_orders(signed_orders, True, callback)
 ```
 
 ---

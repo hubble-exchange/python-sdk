@@ -4,7 +4,7 @@ from typing import Dict, List
 import websockets
 from hexbytes import HexBytes
 
-from hubble_exchange.constants import get_minimum_quantity, get_price_precision
+from hubble_exchange.eip712 import encode_signed_order, get_signature, get_signed_order_hash
 from hubble_exchange.eth import get_async_web3_client, get_websocket_endpoint
 from hubble_exchange.indexer_client import IndexerClient
 from hubble_exchange.models import (AsyncOrderBookDepthCallback,
@@ -15,11 +15,13 @@ from hubble_exchange.models import (AsyncOrderBookDepthCallback,
                                     ConfirmationMode, IOCOrder, LimitOrder,
                                     MarketFeedUpdate,
                                     OrderBookDepthUpdateResponse,
-                                    OrderStatusResponse, TraderFeedUpdate,
-                                    WebsocketResponse)
+                                    OrderStatusResponse, SignedOrder,
+                                    TraderFeedUpdate, WebsocketResponse)
 from hubble_exchange.order_book import OrderBookClient, TransactionMode
-from hubble_exchange.utils import (add_0x_prefix, async_ttl_cache, float_to_scaled_int,
-                                   get_address_from_private_key, get_new_salt, int_to_scaled_float,
+from hubble_exchange.utils import (add_0x_prefix, async_ttl_cache,
+                                   float_to_scaled_int,
+                                   get_address_from_private_key, get_new_salt,
+                                   int_to_scaled_float,
                                    validate_limit_order_like)
 
 
@@ -35,6 +37,7 @@ class HubbleClient:
         self.websocket_endpoint = get_websocket_endpoint()
         self.order_book_client = OrderBookClient(private_key)
         self.indexer_client = IndexerClient()
+        self._private_key = private_key
 
     def set_transaction_mode(self, mode: TransactionMode):
         self.order_book_client.set_transaction_mode(mode)
@@ -219,6 +222,22 @@ class HubbleClient:
             return await callback(response)
         else:
             return await callback(orders)
+
+    async def place_signed_orders(self, signed_orders: List[SignedOrder], callback: AsyncPlaceOrdersCallback):
+        response = []
+        encoded_orders = []
+        for signed_order in signed_orders:
+            signed_order.trader = self.trader_address
+            validate_limit_order_like(signed_order)
+            if signed_order.expire_at is None:
+                    raise ValueError("Order expiry is not set")
+
+            encoded_order= encode_signed_order(signed_order, self._private_key)
+            encoded_orders.append(encoded_order.hex())
+
+        response = await self.web3_client.eth.place_signed_orders(json.dumps(encoded_orders))
+        return await callback(response)
+
     async def cancel_limit_orders(self, orders: List[LimitOrder], wait_for_response: bool, callback, tx_options = None, mode=None):
         if len(orders) > 100:
             raise ValueError("Cannot cancel more than 100 orders at once")
@@ -287,6 +306,64 @@ class HubbleClient:
             )
         order = await self.get_limit_order_details(order_id, order_status_callback)
         return await self.cancel_limit_orders([order], wait_for_response, callback, tx_options, mode)
+    
+    async def cancel_signed_orders(self, orders: List[SignedOrder], wait_for_response: bool, callback, tx_options = None, mode=None):
+        if len(orders) > 100:
+            raise ValueError("Cannot cancel more than 100 orders at once")
+
+        # if the response if requested then we'll have to wait for the transaction to be mined
+        # This is because the receipt is generated only after the transaction is mined(accepted)
+        if wait_for_response:
+            mode = TransactionMode.wait_for_accept
+
+        order_ids = set()  # stores all the order ids
+        for order in orders:
+            if not order.signature:
+                order.signature = get_signature(order, self._private_key)
+
+            order.trader = self.trader_address
+            order_hash = get_signed_order_hash(order)
+            order.id = order_hash
+            order_ids.add(order_hash)  # add each order id to the set
+
+        tx_response = await self.order_book_client.cancel_signed_orders(orders, tx_options, mode)
+        tx_hash = tx_response.tx_hash
+
+        if wait_for_response:
+            receipt = tx_response.receipt
+            if not receipt:
+                receipt = await self.web3_client.eth.get_transaction_receipt(tx_hash)
+
+            response = []
+            event_order_ids = set()
+            cancelled_events = self.order_book_client.get_events_from_receipt(receipt, "OrderCancelAccepted", "signed")
+            for event in cancelled_events:
+                event_order_ids.add(add_0x_prefix(event.args.orderHash.hex()))
+                response.append({
+                    "order_id": add_0x_prefix(event.args.orderHash.hex()),
+                    "success": True
+                })
+            rejected_events = self.order_book_client.get_events_from_receipt(receipt, "OrderCancelRejected", "signed")
+            for event in rejected_events:
+                event_order_ids.add(add_0x_prefix(event.args.orderHash.hex()))
+                response.append({
+                    "order_id": add_0x_prefix(event.args.orderHash.hex()),
+                    "success": False,
+                    "error": event.args.err
+                })
+
+            missing_order_ids = order_ids - event_order_ids  # order ids not present in events
+            for missing_id in missing_order_ids:
+                response.append({
+                    "order_id": missing_id,
+                    "success": False,
+                    "error": "Unknown error"
+                })
+
+            return await callback(response)
+        else:
+            return await callback(orders)
+
 
     async def get_order_fills(self, order_id: str) -> List[Dict]:
         return await self.order_book_client.get_order_fills(order_id)

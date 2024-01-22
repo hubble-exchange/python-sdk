@@ -1,4 +1,5 @@
 import os
+
 from hubble_exchange.constants import init_config
 
 env = os.getenv("HUBBLE_ENV") or "mainnet"
@@ -11,5 +12,5 @@ from hubble_exchange.models import (ConfirmationMode, GetPositionsResponse,
                                     IOCOrder, LimitOrder,
                                     OrderBookDepthResponse,
                                     OrderBookDepthUpdateResponse,
-                                    OrderStatusResponse)
+                                    OrderStatusResponse, SignedOrder)
 from hubble_exchange.order_book import TransactionMode

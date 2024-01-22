@@ -11,10 +11,11 @@ from hubble_exchange.constants import (CHAIN_ID, GAS_PER_ORDER, MAX_GAS_LIMIT,
                                        ClearingHouseContractAddress,
                                        IOCBookContractAddress,
                                        LimitOrderBookContractAddress,
-                                       OrderBookContractAddress)
+                                       OrderBookContractAddress,
+                                       SignedOrderBookContractAddress)
 from hubble_exchange.eth import get_async_web3_client, get_sync_web3_client
 from hubble_exchange.models import (ExecutionMode, IOCOrder, LimitOrder,
-                                    OrderStatus, SendTransactionResponse, Trade, TransactionMode)
+                                    OrderStatus, SendTransactionResponse, SignedOrder, Trade, TransactionMode)
 from hubble_exchange.utils import (get_address_from_private_key,
                                    int_to_scaled_float)
 
@@ -31,6 +32,10 @@ with open(f"{HERE}/contract_abis/LimitOrderBook.json", 'r') as abi_file:
 with open(f"{HERE}/contract_abis/ImmediateOrCancelOrders.json", 'r') as abi_file:
     abi_str = abi_file.read()
     IOC_ORDERBOOK_ABI = json.loads(abi_str)
+
+with open(f"{HERE}/contract_abis/SignedOrderBook.json", 'r') as abi_file:
+    abi_str = abi_file.read()
+    SIGNED_ORDERBOOK_ABI = json.loads(abi_str)
 
 with open(f"{HERE}/contract_abis/ClearingHouse.json", 'r') as abi_file:
     abi_str = abi_file.read()
@@ -50,6 +55,7 @@ class OrderBookClient(object):
         self.order_book_contract = self.web3_client.eth.contract(address=OrderBookContractAddress, abi=ORDERBOOK_ABI)
         self.limit_order_book_contract = self.web3_client.eth.contract(address=LimitOrderBookContractAddress, abi=LIMIT_ORDERBOOK_ABI)
         self.ioc_order_book_contract = self.web3_client.eth.contract(address=IOCBookContractAddress, abi=IOC_ORDERBOOK_ABI)
+        self.signed_order_book_contract = self.web3_client.eth.contract(address=SignedOrderBookContractAddress, abi=SIGNED_ORDERBOOK_ABI)
         self.clearing_house_contract = self.web3_client.eth.contract(address=ClearingHouseContractAddress, abi=CLEARINGHOUSE_ABI)
 
         # get nonce from sync web3 client
@@ -118,6 +124,19 @@ class OrderBookClient(object):
 
         method = getattr(self.limit_order_book_contract.functions, "cancelOrders")
         return await self._send_transaction(method, [cancel_order_payload], tx_options, mode)
+
+    async def cancel_signed_orders(self, orders: list[SignedOrder], custom_tx_options=None, mode=None):
+        orders_to_cancel = []
+        signatures = []
+        for order in orders:
+            orders_to_cancel.append(order.to_dict())
+            signatures.append(order.signature)
+
+        tx_options = {'gas': min(GAS_PER_ORDER * len(orders), MAX_GAS_LIMIT)}
+        tx_options.update(custom_tx_options or {})
+
+        method = getattr(self.signed_order_book_contract.functions, "cancelOrders")
+        return await self._send_transaction(method, [orders_to_cancel, signatures], tx_options, mode)
 
     async def get_order_fills(self, order_id: str) -> List[Dict]:
         orders_matched_events = await self.order_book_contract.events.OrderMatched().get_logs(
@@ -196,6 +215,8 @@ class OrderBookClient(object):
             contract = self.ioc_order_book_contract
         if contract_name == "limit":
             contract = self.limit_order_book_contract
+        if contract_name == "signed":
+            contract = self.signed_order_book_contract
         event = getattr(contract.events, event_name)
         return event().process_receipt(receipt, DISCARD)
 

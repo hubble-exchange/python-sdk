@@ -1,7 +1,7 @@
 
 import asyncio
 import os
-from typing import Awaitable, Callable, Dict, List, Optional
+from typing import Awaitable, Callable, Dict, List
 
 from eth_typing import Address
 from hexbytes import HexBytes
@@ -14,13 +14,12 @@ from web3.middleware import (async_geth_poa_middleware,
                              construct_simple_cache_middleware,
                              geth_poa_middleware)
 from web3.middleware.async_cache import _async_simple_cache_middleware
-from web3.types import RPCEndpoint, TxParams, Wei, _Hash32
+from web3.types import RPCEndpoint, _Hash32
 
 from hubble_exchange.errors import OrderNotFound, TraderNotFound
 from hubble_exchange.models import (GetPositionsResponse, OpenOrder,
                                     OrderBookDepthResponse,
                                     OrderStatusResponse)
-from hubble_exchange.constants import HTTP_PROTOCOL, WS_PROTOCOL
 
 sync_web3_client = None
 async_web3_client = None
@@ -32,6 +31,7 @@ class HubblenetEth(AsyncEth):
     _get_margin_and_positions: Method[Callable[[Address], Awaitable[Dict]]] = Method(RPCEndpoint("trading_getMarginAndPositions"), mungers=[default_root_munger])
     _get_order_book_depth: Method[Callable[[int], Awaitable[Dict]]] = Method(RPCEndpoint("trading_getTradingOrderBookDepth"), mungers=[default_root_munger])
     _get_open_orders: Method[Callable[[Address, str], Awaitable[Dict]]] = Method(RPCEndpoint("orderbook_getOpenOrders"), mungers=[default_root_munger])
+    _place_signed_orders: Method[Callable[[str], Awaitable[Dict]]] = Method(RPCEndpoint("order_placeSignedOrders"), mungers=[default_root_munger])
 
     async def get_order_status(self, order_id: _Hash32) -> OrderStatusResponse:
         try:
@@ -68,6 +68,21 @@ class HubblenetEth(AsyncEth):
         for order in response["Orders"]:
             open_orders.append(OpenOrder(**order))
         return open_orders
+
+    async def place_signed_orders(self, signed_orders) -> Dict:
+        response = await self._place_signed_orders(signed_orders)
+        orders = response.get('orders', [])
+        response = []
+        for order in orders:
+            order_response = {
+                'success': order.get('success', False),
+                'order_id': order.get('orderId', ''),
+            }
+            if order.get('error', ''):
+                order_response['error'] = order['error']
+
+            response.append(order_response)
+        return response
 
     async def wait_for_transaction_status(self, transaction_hash: HexBytes, timeout: float = 120, poll_latency: float = 0.1) -> Dict:
         async def _wait_for_status_with_timeout(
