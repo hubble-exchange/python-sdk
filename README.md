@@ -103,11 +103,14 @@ async def main():
 ## Signed maker orders
 
 Signed orders are orders that are signed by the trader and sent to the matching engine. The matching engine will verify the signature and place the order. Signed orders don't make a transaction on the blockchain.
+To ensure a graceful shutdown, use the method `close_websocket` to close the websocket connection before exiting the application.
 
 ```python
-signed_orders = []
-signed_orders.append(client.prepare_signed_order(0, 1, 1800, False, 10))
-await client.place_signed_orders(signed_orders)
+signed_order = client.prepare_signed_order(0, 1, 1800, False, 10)
+print(signed_order.id.hex())
+await client.place_signed_orders([signed_order])
+
+await client.close_websocket()
 ```
 
 ### Cancelling Signed orders

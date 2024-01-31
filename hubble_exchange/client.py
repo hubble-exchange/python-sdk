@@ -43,6 +43,13 @@ class HubbleClient:
         self.indexer_client = IndexerClient()
         self._private_key = private_key
 
+        self.signed_order_ws_connection = None
+
+    async def close_websocket(self):
+        if self.signed_order_ws_connection:
+            await self.signed_order_ws_connection.close()
+            self.signed_order_ws_connection = None
+
     def set_transaction_mode(self, mode: TransactionMode):
         self.order_book_client.set_transaction_mode(mode)
 
@@ -242,8 +249,12 @@ class HubbleClient:
         order.id = get_signed_order_hash(order)
         return order
 
-    async def place_signed_orders(self, signed_orders: List[SignedOrder], callback: AsyncPlaceOrdersCallback):
-        response = []
+    async def place_signed_orders(
+        self, signed_orders: List[SignedOrder], callback: AsyncPlaceOrdersCallback
+    ) -> None:
+        if not self.signed_order_ws_connection:
+            self.signed_order_ws_connection = await websockets.connect(self.websocket_endpoint)
+
         encoded_orders = []
         for signed_order in signed_orders:
             if not signed_order.trader:
@@ -256,8 +267,30 @@ class HubbleClient:
             encoded_order= encode_signed_order(signed_order, self._private_key)
             encoded_orders.append(encoded_order.hex())
 
-        response = await self.web3_client.eth.place_signed_orders(json.dumps(encoded_orders))
+        msg = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "order_placeSignedOrders",
+            "params": [json.dumps(encoded_orders)]
+        }
+
+        await self.signed_order_ws_connection.send(json.dumps(msg))
+
+        message = await self.signed_order_ws_connection.recv()
+        message_json = json.loads(message)
+        orders = message_json.get('result', {}).get('orders', [])
+        response = []
+        for order in orders:
+            order_response = {
+                'success': order.get('success', False),
+                'order_id': order.get('orderId', ''),
+            }
+            if order.get('error', ''):
+                order_response['error'] = order['error']
+
+            response.append(order_response)
         return await callback(response)
+
 
     async def cancel_limit_orders(self, orders: List[LimitOrder], wait_for_response: bool, callback, tx_options = None, mode=None):
         if len(orders) > 100:
