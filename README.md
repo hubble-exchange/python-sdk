@@ -105,10 +105,8 @@ async def main():
 Signed orders are orders that are signed by the trader and sent to the matching engine. The matching engine will verify the signature and place the order. Signed orders don't make a transaction on the blockchain.
 
 ```python
-from hubble_exchange import SignedOrder
-
 signed_orders = []
-signed_orders.append(SignedOrder.new(0, 1, 1800, False, 10))
+signed_orders.append(client.prepare_signed_order(0, 1, 1800, False, 10))
 await client.place_signed_orders(signed_orders)
 ```
 
