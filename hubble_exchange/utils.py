@@ -1,7 +1,9 @@
+import asyncio
 import functools
 import random
 import time
 from decimal import Decimal, getcontext
+from functools import wraps
 
 from eth_account import Account
 from eth_typing import Address
@@ -96,3 +98,25 @@ def async_ttl_cache(ttl=300):
         return wrapped
 
     return decorator
+
+
+def timeit(method):
+    @wraps(method)
+    async def timed_async(*args, **kw):
+        start_time = time.time()
+        result = await method(*args, **kw)
+        end_time = time.time()
+        print(f"Async method {method.__name__} took {end_time - start_time:.4f} seconds")
+        return result
+
+    def timed_sync(*args, **kw):
+        start_time = time.time()
+        result = method(*args, **kw)
+        end_time = time.time()
+        print(f"Sync method {method.__name__} took {end_time - start_time:.4f} seconds")
+        return result
+
+    if asyncio.iscoroutinefunction(method):
+        return timed_async
+    else:
+        return timed_sync

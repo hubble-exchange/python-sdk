@@ -1,10 +1,14 @@
 import json
+import math
+import time
 from typing import Dict, List
 
 import websockets
 from hexbytes import HexBytes
+from web3 import Web3
 
-from hubble_exchange.eip712 import encode_signed_order, get_signature, get_signed_order_hash
+from hubble_exchange.eip712 import (encode_signed_order, get_signature,
+                                    get_signed_order_hash)
 from hubble_exchange.eth import get_async_web3_client, get_websocket_endpoint
 from hubble_exchange.indexer_client import IndexerClient
 from hubble_exchange.models import (AsyncOrderBookDepthCallback,
@@ -223,11 +227,28 @@ class HubbleClient:
         else:
             return await callback(orders)
 
+    def prepare_signed_order(self, amm_index: int, base_asset_quantity: float, price: float, reduce_only: bool, expiry_duration: int):
+        order = SignedOrder(
+            id=None, # type: ignore
+            signature=None, # type: ignore
+            amm_index=amm_index,
+            trader=self.trader_address, # type: ignore
+            base_asset_quantity=Web3.to_wei(abs(base_asset_quantity), 'ether') * int(math.copysign(1, base_asset_quantity)),
+            price=Web3.to_wei(price, 'mwei'),
+            salt=get_new_salt(),
+            reduce_only=reduce_only,
+            expire_at=int(time.time()) + expiry_duration)
+
+        order.id = get_signed_order_hash(order)
+        return order
+
     async def place_signed_orders(self, signed_orders: List[SignedOrder], callback: AsyncPlaceOrdersCallback):
         response = []
         encoded_orders = []
         for signed_order in signed_orders:
-            signed_order.trader = self.trader_address
+            if not signed_order.trader:
+                signed_order.trader = self.trader_address
+
             validate_limit_order_like(signed_order)
             if signed_order.expire_at is None:
                     raise ValueError("Order expiry is not set")

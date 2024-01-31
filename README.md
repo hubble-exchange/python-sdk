@@ -55,7 +55,8 @@ async def main():
 
     # place signed order
     signed_orders = []
-    signed_orders.append(SignedOrder.new(0, 1, 1800, False, 10))
+    # prepare a signed order for market = 0, size = 1, price = 1800, reduce_only = False, and expiry of 10 seconds
+    signed_orders.append(client.prepare_signed_order(0, 1, 1800, False, 10))
     await client.place_signed_orders(signed_orders)
 
     # get limit order details - only works for open limit orders

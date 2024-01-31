@@ -12,6 +12,7 @@ from hubble_exchange.constants import CHAIN_ID, SignedOrderBookContractAddress
 from hubble_exchange.models import SignedOrder as SignedOrderModel
 
 domain = make_domain(name='Hubble', version="2.0", chainId=CHAIN_ID, verifyingContract=SignedOrderBookContractAddress)
+domain_separator = HexBytes(domain.hash_struct())
 
 
 class EIP712Struct(EIP712StructBase):
@@ -36,7 +37,6 @@ class SignedOrder(EIP712Struct):
 
 
 def _get_signed_order_hash(order: SignedOrder):
-    domain_separator = HexBytes(domain.hash_struct())
     message_hash = HexBytes(order.hash_struct())
 
     struct_hash = Web3.solidity_keccak(
@@ -60,7 +60,6 @@ def get_signed_order_hash(signed_order: SignedOrderModel):
         postOnly=True
     )
 
-    domain_separator = HexBytes(domain.hash_struct())
     message_hash = HexBytes(order.hash_struct())
 
     struct_hash = Web3.solidity_keccak(
