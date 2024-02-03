@@ -86,6 +86,15 @@ class OrderBookClient(object):
             status = OrderStatus.PartiallyFilled.value
         return OrderStatus(status).name
 
+    async def get_signed_order_status(self, order_id: HexBytes):
+        response = await self.signed_order_book_contract.functions.orderStatus(order_id).call()
+        status = response[1]
+        filled_amount = response[0]
+        return {
+            "status": OrderStatus(status),
+            "filled_amount": int_to_scaled_float(filled_amount, 18),
+        }
+
     async def place_limit_orders(self, orders: List[LimitOrder], custom_tx_options=None, mode=None):
         """
         Place limit orders

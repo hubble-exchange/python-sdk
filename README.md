@@ -110,7 +110,28 @@ signed_order = client.prepare_signed_order(0, 1, 1800, False, 10)
 print(signed_order.id.hex())
 await client.place_signed_orders([signed_order])
 
+await client.get_signed_order_status(signed_order.id, callback)
+
 await client.close_websocket()
+```
+
+### Get signed order status
+
+Similar to limit orders, `get_signed_order_status` can be used to fetch the status of a signed order. Since expired signed orders are purged from the system, this function can't tell whether the order is expired or invalid(unrecognised order). To check for expiry, the client can just compare expire_at timestamp with current time.
+
+```python
+
+signed_order = client.prepare_signed_order(0, 1, 1800, False, 10)
+.
+.
+.
+.
+
+if int(time.time()) > signed_order.expire_at:
+    status = 'expired'
+else:
+    await client.get_signed_order_status(signed_order.id, callback)
+
 ```
 
 ### Cancelling Signed orders

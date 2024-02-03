@@ -1,3 +1,4 @@
+import asyncio
 import json
 import math
 import time
@@ -9,6 +10,7 @@ from web3 import Web3
 
 from hubble_exchange.eip712 import (encode_signed_order, get_signature,
                                     get_signed_order_hash)
+from hubble_exchange.errors import OrderNotFound
 from hubble_exchange.eth import get_async_web3_client, get_websocket_endpoint
 from hubble_exchange.indexer_client import IndexerClient
 from hubble_exchange.models import (AsyncOrderBookDepthCallback,
@@ -18,7 +20,7 @@ from hubble_exchange.models import (AsyncOrderBookDepthCallback,
                                     AsyncSubscribeToOrderBookDepthCallback,
                                     ConfirmationMode, IOCOrder, LimitOrder,
                                     MarketFeedUpdate,
-                                    OrderBookDepthUpdateResponse,
+                                    OrderBookDepthUpdateResponse, OrderStatus,
                                     OrderStatusResponse, SignedOrder,
                                     TraderFeedUpdate, WebsocketResponse)
 from hubble_exchange.order_book import OrderBookClient, TransactionMode
@@ -87,6 +89,36 @@ class HubbleClient:
     async def get_limit_order_status(self, order_id: HexBytes, callback):
         response = await self.order_book_client.get_limit_order_status(order_id)
         return await callback(response)
+
+    async def get_signed_order_status(self, order_id: HexBytes, callback):
+        status = None
+        contract_response = await self.order_book_client.get_signed_order_status(order_id)
+        try:
+            if contract_response['status'] == OrderStatus.Invalid:
+                # contract is not aware of the order, so check the rpc for details
+                # if rpc also doesn't know about the order, then it's either invalid or it's expired
+                api_response = await self.web3_client.eth.get_order_status(order_id.hex())
+                api_status = api_response.status
+                if api_status == "NEW":
+                    status = OrderStatus.Placed.name
+                elif api_status == "FILLED":
+                    status = OrderStatus.Filled.name
+                elif api_status == "CANCELED":
+                    status = OrderStatus.Cancelled.name
+                elif api_status == "REJECTED":
+                    status = OrderStatus.Invalid.name
+                elif api_status == "PARTIALLY_FILLED":
+                    status = OrderStatus.PartiallyFilled.name
+            else:
+                status = contract_response['status'].name
+        except OrderNotFound as e:
+            # if order is not found in the rpc, but contract shows filled quantity, then it's partially filled
+            if contract_response['filled_amount'] > 0:
+                status = OrderStatus.PartiallyFilled.name
+            else:
+                status = OrderStatus.Invalid.name
+
+        return await callback(status)
 
     async def get_open_orders(self, market_id: int, callback: AsyncOrderStatusCallback):
         response = await self.web3_client.eth.get_open_orders(self.trader_address, market_id)
