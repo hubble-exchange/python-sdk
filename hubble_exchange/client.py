@@ -474,6 +474,7 @@ class HubbleClient:
         self, market: int, callback: AsyncSubscribeToOrderBookDepthCallback
     ) -> None:
         async with websockets.connect(self.websocket_endpoint) as ws:
+
             msg = {
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -494,6 +495,34 @@ class HubbleClient:
                         symbol=response.params['result']['s'],
                         bids=response.params['result']['b'],
                         asks=response.params['result']['a'],
+                    )
+                    await callback(ws, response)
+
+    async def subscribe_to_order_book_depth_with_freq(
+        self, market: int, callback: AsyncSubscribeToOrderBookDepthCallback, freq: str = "1s"
+    ) -> None:
+        async with websockets.connect(self.websocket_endpoint) as ws:
+            msg = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "orderbook_subscribe",
+                "params": ["streamDepthUpdateForMarketAndFreq", market, freq]
+            }
+            await ws.send(json.dumps(msg))
+
+            async for message in ws:
+                message_json = json.loads(message)
+
+                if message_json.get('result'):
+                    # ignore because it's a subscription confirmation with subscription id
+                    continue
+                response = WebsocketResponse(**message_json)
+                if response.method and response.method == "orderbook_subscription":
+                    response = OrderBookDepthUpdateResponse(
+                        T=0,
+                        symbol=response.params['result']['market'],
+                        bids=[[str(int_to_scaled_float(int(price), 6)), str(int_to_scaled_float(int(qty), 18))] for price, qty in response.params['result']['longs'].items()],
+                        asks=[[str(int_to_scaled_float(int(price), 6)), str(int_to_scaled_float(int(qty), 18))] for price, qty in response.params['result']['shorts'].items()],
                     )
                     await callback(ws, response)
 
