@@ -6,6 +6,7 @@ from typing import Awaitable, Callable, Dict, List
 from eth_typing import Address
 from hexbytes import HexBytes
 from web3 import AsyncHTTPProvider, AsyncWeb3, HTTPProvider, Web3
+from web3.providers import WebsocketProviderV2
 from web3.eth.async_eth import AsyncEth
 from web3.exceptions import TimeExhausted
 from web3.main import Web3, get_async_default_modules
@@ -127,7 +128,11 @@ def get_async_web3_client() -> HubblenetWeb3:
     if not async_web3_client:
         rpc_endpoint = get_rpc_endpoint()
 
-        async_web3_client = HubblenetWeb3(AsyncHTTPProvider(rpc_endpoint), modules=get_web3_modules())
+        # async_web3_client = HubblenetWeb3(AsyncHTTPProvider(rpc_endpoint), modules=get_web3_modules())
+        async_web3_client = HubblenetWeb3.persistent_websocket(
+            WebsocketProviderV2(get_websocket_endpoint()),
+            modules=get_web3_modules(),
+        )
         async_web3_client.middleware_onion.inject(async_geth_poa_middleware, layer=0)
 
         # cache frequent eth_chainId calls
@@ -136,6 +141,11 @@ def get_async_web3_client() -> HubblenetWeb3:
         # async_web3_client.eth.set_gas_price_strategy(rpc_gas_price_strategy)
 
     return async_web3_client
+
+
+# def get_ws_web3_client() -> Web3:
+#     conn = HubblenetWeb3.persistent_websocket(WebsocketProviderV2(get_websocket_endpoint()))
+#     conn.eth.send_transaction
 
 
 def get_sync_web3_client() -> Web3:

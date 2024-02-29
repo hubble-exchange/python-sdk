@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 
 from eth_typing import Address
 from hexbytes import HexBytes
+from web3 import AsyncWeb3, WebsocketProviderV2
 from web3.contract.async_contract import AsyncContractFunction
 from web3.logs import DISCARD
 
@@ -13,7 +14,7 @@ from hubble_exchange.constants import (CHAIN_ID, GAS_PER_ORDER, MAX_GAS_LIMIT,
                                        LimitOrderBookContractAddress,
                                        OrderBookContractAddress,
                                        SignedOrderBookContractAddress)
-from hubble_exchange.eth import get_async_web3_client, get_sync_web3_client
+from hubble_exchange.eth import get_async_web3_client, get_sync_web3_client, get_websocket_endpoint
 from hubble_exchange.models import (ExecutionMode, IOCOrder, LimitOrder,
                                     OrderStatus, SendTransactionResponse, SignedOrder, Trade, TransactionMode)
 from hubble_exchange.utils import (get_address_from_private_key,
@@ -57,6 +58,8 @@ class OrderBookClient(object):
         self.ioc_order_book_contract = self.web3_client.eth.contract(address=IOCBookContractAddress, abi=IOC_ORDERBOOK_ABI)
         self.signed_order_book_contract = self.web3_client.eth.contract(address=SignedOrderBookContractAddress, abi=SIGNED_ORDERBOOK_ABI)
         self.clearing_house_contract = self.web3_client.eth.contract(address=ClearingHouseContractAddress, abi=CLEARINGHOUSE_ABI)
+
+        # self.ws_web3_client = AsyncWeb3.persistent_websocket(WebsocketProviderV2(get_websocket_endpoint()))
 
         # get nonce from sync web3 client
         sync_web3 = get_sync_web3_client()
@@ -258,6 +261,8 @@ class OrderBookClient(object):
         transaction = await method(*args).build_transaction(tx_params)
         signed_tx = self.web3_client.eth.account.sign_transaction(transaction, self._private_key)
         tx_hash = await self.web3_client.eth.send_raw_transaction(signed_tx.rawTransaction)
+        # signed_tx = self.ws_web3_client.eth.account.sign_transaction(transaction, self._private_key)
+        # tx_hash = await self.ws_web3_client.eth.send_raw_transaction(signed_tx.rawTransaction)
         response.tx_hash = tx_hash
         if mode == TransactionMode.wait_for_accept:
             tx_receipt = await self.web3_client.eth.wait_for_transaction_receipt(tx_hash, timeout=120, poll_latency=0.1)

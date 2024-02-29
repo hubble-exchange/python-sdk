@@ -52,6 +52,8 @@ class HubbleClient:
             await self.signed_order_ws_connection.close()
             self.signed_order_ws_connection = None
 
+        await self.web3_client.provider.disconnect()
+
     def set_transaction_mode(self, mode: TransactionMode):
         self.order_book_client.set_transaction_mode(mode)
 

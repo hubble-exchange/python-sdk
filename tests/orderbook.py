@@ -70,7 +70,6 @@ async def test_cancel_orders():
 @pytest.mark.asyncio
 async def test_cancel_order_by_id():
     order = await client.place_single_order(0, 0.01, 1800, False, callback, mode=TransactionMode.wait_for_accept)
-    print(order)
 
     await client.cancel_order_by_id(order.id, callback, mode=TransactionMode.wait_for_accept)
 

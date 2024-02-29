@@ -17,6 +17,9 @@ Go to pypi.org(and test.pypi.org) and login to create API keys and then create a
 ## Steps to build and publish
 
 ```shell
+# clear the dist folder before releaasing a new version
+rm -rf dist
+
 # build a new package, version number needs to be updated in pyproject.toml before this
 python3 -m build
 
@@ -25,7 +28,7 @@ python3 -m build
 # check the current version number on https://test.pypi.org/project/hubble-exchange/
 python3 -m twine upload --repository testpypi dist/*
 
-# test this package by installing it from testpypi like this:
+# test this package by installing it from testpypi like this, use the exact version here:
 pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple hubble-exchange==0.1.0.dev0
 
 # release on pypi - this is like production release
