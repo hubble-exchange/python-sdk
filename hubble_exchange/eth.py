@@ -6,6 +6,7 @@ from typing import Awaitable, Callable, Dict, List
 from eth_typing import Address
 from hexbytes import HexBytes
 from web3 import AsyncHTTPProvider, AsyncWeb3, HTTPProvider, Web3
+from web3.datastructures import AttributeDict
 from web3.eth.async_eth import AsyncEth
 from web3.exceptions import TimeExhausted
 from web3.main import Web3, get_async_default_modules
@@ -20,6 +21,7 @@ from hubble_exchange.errors import OrderNotFound, TraderNotFound
 from hubble_exchange.models import (GetPositionsResponse, OpenOrder,
                                     OrderBookDepthResponse,
                                     OrderStatusResponse)
+from hubble_exchange.utils import int_to_scaled_float
 
 sync_web3_client = None
 async_web3_client = None
@@ -32,6 +34,7 @@ class HubblenetEth(AsyncEth):
     _get_order_book_depth: Method[Callable[[int], Awaitable[Dict]]] = Method(RPCEndpoint("trading_getTradingOrderBookDepth"), mungers=[default_root_munger])
     _get_open_orders: Method[Callable[[Address, str], Awaitable[Dict]]] = Method(RPCEndpoint("orderbook_getOpenOrders"), mungers=[default_root_munger])
     _place_signed_orders: Method[Callable[[str], Awaitable[Dict]]] = Method(RPCEndpoint("order_placeSignedOrders"), mungers=[default_root_munger])
+    _get_clearing_house_vars: Method[Callable[[Address], Awaitable[Dict]]] = Method(RPCEndpoint("testing_getClearingHouseVars"), mungers=[default_root_munger])
 
     async def get_order_status(self, order_id: _Hash32) -> OrderStatusResponse:
         try:
@@ -45,8 +48,32 @@ class HubblenetEth(AsyncEth):
 
     async def get_margin_and_positions(self, trader: Address) -> GetPositionsResponse:
         try:
-            response = await self._get_margin_and_positions(trader)
-            return GetPositionsResponse(**response)
+            margin_response, clearing_house_vars = await asyncio.gather(
+                self._get_margin_and_positions("0x5d9a0ae5a863445afe8fb7874c95d85c53e9fe91"),
+                self._get_clearing_house_vars("0x5d9a0ae5a863445afe8fb7874c95d85c53e9fe91")
+            )
+
+            margin_response = dict(margin_response)
+
+            #  get the index price from clearing house vars and use that to
+            # recalculate unrealised pnl and notional position
+            positions = [dict(position) for position in margin_response['positions']]
+            for position in positions:
+                index_price = clearing_house_vars.underlying_prices[position['market']]
+                index_price = int_to_scaled_float(index_price, 6)
+                open_notional = float(position['openNotional'])
+                size = float(position['size'])
+                margin = float(margin_response['margin'])
+                notional_position = size * index_price
+                uPnL = notional_position - open_notional if size > 0 else open_notional - notional_position
+
+                position['notionalPosition'] = round(notional_position, 6)
+                position['unrealisedProfit'] = round(uPnL, 6)
+
+            margin_response['positions'] = [AttributeDict(position) for position in positions]
+            margin_response = AttributeDict(margin_response)
+
+            return GetPositionsResponse(**margin_response)
         except ValueError as e:
             if len(e.args) > 0 and e.args[0].get('message', '') == "trader not found":
                 raise TraderNotFound()
@@ -57,13 +84,17 @@ class HubblenetEth(AsyncEth):
         response = await self._get_order_book_depth(market)
         return OrderBookDepthResponse(**response)
 
+    async def get_clearing_house_vars(self, market: int) -> OrderBookDepthResponse:
+        response = await self._get_order_book_depth(market)
+        return response
+
     async def get_open_orders(self, trader:Address, market: int=None) -> List[OpenOrder]:
         if market is None:
             market_str = ""
         else:
             market_str = str(market)
 
-        open_orders = []    
+        open_orders = []
         response = await self._get_open_orders(trader, market_str)
         for order in response["Orders"]:
             open_orders.append(OpenOrder(**order))
