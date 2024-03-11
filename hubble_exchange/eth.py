@@ -49,8 +49,8 @@ class HubblenetEth(AsyncEth):
     async def get_margin_and_positions(self, trader: Address) -> GetPositionsResponse:
         try:
             margin_response, clearing_house_vars = await asyncio.gather(
-                self._get_margin_and_positions("0x5d9a0ae5a863445afe8fb7874c95d85c53e9fe91"),
-                self._get_clearing_house_vars("0x5d9a0ae5a863445afe8fb7874c95d85c53e9fe91")
+                self._get_margin_and_positions(trader),
+                self._get_clearing_house_vars(trader)
             )
 
             margin_response = dict(margin_response)
