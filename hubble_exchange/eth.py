@@ -64,7 +64,7 @@ class HubblenetEth(AsyncEth):
                 open_notional = float(position['openNotional'])
                 size = float(position['size'])
                 margin = float(margin_response['margin'])
-                notional_position = size * index_price
+                notional_position = abs(size * index_price)
                 uPnL = notional_position - open_notional if size > 0 else open_notional - notional_position
 
                 position['notionalPosition'] = round(notional_position, 6)
